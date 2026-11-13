@@ -29,7 +29,7 @@ class ContratoDeErroTest {
                 Arguments.of(CodigoDeErro.AUTENTICACAO_NECESSARIA, 401),
                 Arguments.of(CodigoDeErro.TOKEN_EXPIRADO, 401),
                 Arguments.of(CodigoDeErro.TOKEN_INVALIDO, 401),
-                Arguments.of(CodigoDeErro.PLANO_INSUFICIENTE, 402), // QUEBRA PROPOSITAL para validar o CI (será revertida)
+                Arguments.of(CodigoDeErro.PLANO_INSUFICIENTE, 403),
                 Arguments.of(CodigoDeErro.ACESSO_NEGADO, 403));
     }
 
