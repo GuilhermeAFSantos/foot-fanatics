@@ -58,9 +58,24 @@ class PersistenciaDoTreinoIntegracaoTest {
     }
 
     @BeforeEach
-    void provisionar() {
+    void provisionar() throws SQLException {
         admin = dataSource(POSTGRES.getUsername(), POSTGRES.getPassword(), "admin-teste");
         new ProvisionadorDeBanco().provisionar(admin, SENHAS);
+        isolarDoTesteAnterior();
+    }
+
+    /**
+     * Isolamento (decisão registrada no plano, §7): o contêiner é compartilhado pela classe, então cada teste
+     * começa com o schema ml vazio e sem conexões de testes anteriores segurando o advisory lock.
+     * Só prepara o ambiente; não altera nenhuma asserção.
+     */
+    private void isolarDoTesteAnterior() throws SQLException {
+        try (Connection con = admin.getConnection(); Statement st = con.createStatement()) {
+            st.execute("SELECT pg_terminate_backend(pid) FROM pg_stat_activity"
+                    + " WHERE datname = current_database() AND pid <> pg_backend_pid()");
+            st.execute("TRUNCATE ml.ponteiro_modelo_ativo, ml.quarentena, ml.versao_modelo, ml.execucao_treino CASCADE");
+            st.execute("UPDATE ml.checkpoint_treino SET watermark = 'epoch', ultima_execucao_id = NULL");
+        }
     }
 
     private static String sqlStateAoExecutar(String usuario, String senha, String sql) {
