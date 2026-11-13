@@ -1,6 +1,8 @@
 # Foot Fanatics — Plano de TDD (inventário de regras e casos de teste)
 
-> **Status:** fase **red** concluída em 2026-11-13. Os testes estão escritos, e o código de produção tem só assinaturas mínimas, sem lógica. Ver a §6 (matriz regra → caso → teste → status).
+> **Status:** fase **green** concluída em 2026-11-13. `./mvnw -B verify` passa: 199 testes, 0 falhas, 0 erros, 36 desabilitados. Ver a §7 (matriz atual). A §6 fica como registro da fase red.
+>
+> ~~Status anterior: fase red concluída em 2026-11-13; testes escritos e assinaturas mínimas sem lógica.~~
 >
 > ~~Status anterior: preparação do ciclo de TDD. Nenhum teste nem código de produção foi escrito.~~
 > **Fonte de verdade:** só os artefatos do repositório. Nenhuma regra foi criada aqui; cada uma cita a origem como `arquivo:linha` ou ADR.
@@ -554,7 +556,7 @@ As assinaturas precisam de nomes e formatos para compilar. Elas não têm lógic
 | Rollback "auditado" | §6.3 item 13 | **Não verificável:** não existe componente de auditoria (DIV-03). CT-S11.01 verifica só ponteiro e estados. |
 | "Resposta continua 200" no fallback sem modelo | §6.3 item 14 | **Não verificável:** o uso do Modelo M pela API é Q-09. CT-S13.03 verifica só que não há erro e que nenhum modelo é servido. |
 
-### 6.6 Matriz
+### 6.6 Matriz (fase red; registro histórico, a matriz atual está na §7.5)
 
 "Situação no plano" é a coluna da §2/§3. "Status red" é o resultado real da execução.
 
@@ -711,3 +713,237 @@ As assinaturas precisam de nomes e formatos para compilar. Elas não têm lógic
 | RS-15 | CT-S15.01 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_01_batchLeitorSemAcessoAApp` | Condicional | **VERMELHO** | falha por UnsupportedOperationException (não implementado) |
 | RS-15 | CT-S15.02 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_02_batchLeitorLeEventos` | Condicional | **VERMELHO** | falha por UnsupportedOperationException (não implementado) |
 | RS-15 | CT-S15.03 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_03_apiNaoEscreveEmMl` | Condicional | **VERMELHO** | falha por UnsupportedOperationException (não implementado) |
+
+---
+
+## 7. Fase green: implementação e matriz atual
+
+> **Execução:** `./mvnw -B verify`, em 2026-11-13: **BUILD SUCCESS**, com 199 execuções, 0 falhas, 0 erros e 36 desabilitadas. Os resultados foram extraídos dos relatórios do Surefire. Os testes de integração também passaram 3 vezes seguidas em **ordem aleatória** (`MethodOrderer$Random`).
+
+### 7.1 Resultado
+
+| Medida | Fase red (§6) | Fase green |
+|--------|---------------|------------|
+| Verdes | 2 | **163** |
+| Vermelhos | 161 | **0** |
+| Desabilitados | 36 | 36 (os mesmos, nenhum novo `@Disabled`) |
+| Casos do plano com teste verde | 1 | **117** (os 32 casos restantes seguem desabilitados por pergunta ou lacuna) |
+
+**Testes intactos:** em relação ao commit da fase red (`67c0db3`), nenhuma asserção, `@Disabled`, `@Test` ou resultado esperado mudou. O único arquivo de teste alterado é `PersistenciaDoTreinoIntegracaoTest`, e só na preparação (§7.3).
+
+### 7.2 Como foi feito
+
+O trabalho seguiu **um componente por vez**, com a suíte inteira rodada depois de cada passo:
+
+| Passo | Componentes (nomes do catálogo §2.1) | ADRs | Suíte depois do passo |
+|-------|--------------------------------------|------|-----------------------|
+| 1 | TratadorDeErros, ServicoDeAssinatura, PoliticaDeAcesso, ServicoDeConteudo | 002, 003, 005, 014 | 39 verdes; o restante falhava só por "não implementado" |
+| 2 | ServicoDeIdentidade, ServicoDeSessao (+ `seguranca/Hashes`, funções de apoio que não são componente) | 004, 015 | 78 verdes |
+| 3 | ExtratorIncremental, RegistradorDeEventos, ValidadorDeDados, GateDePromocao, TransicoesDeVersao, PromotorDeModelo, LeitorDoModeloAtivo, OrquestradorDoJob | 007–013 | 154 verdes; faltavam só os 9 de integração |
+| 4 | ProvisionadorDeBanco, RegistryDeModelosJdbc, GerenciadorDeLockPostgres | 009, 010, 015 | 161 verdes e 2 erros de isolamento (§7.3) |
+| 5 | Isolamento da classe de integração (aprovado pelo usuário) | — | **163 verdes** |
+
+O passo de refatoração com a suíte verde não encontrou duplicação nem complexidade que justificasse mudança.
+
+**Pontos da sessão (ADR-004):**
+- Os tokens são opacos (`idDaSessao.versao.assinatura`), assinados com HMAC por uma chave do servidor.
+- A SESSAO guarda só hashes.
+- O "mesmo par" da tolerância de reuso é recalculado a partir da versão, sem guardar texto puro.
+- A rotação e a revogação usam controle otimista: a revogação também incrementa a versão, para não se perder numa corrida.
+
+### 7.3 Divergência encontrada num teste e como foi resolvida
+
+| Item | Conteúdo |
+|------|----------|
+| Teste | `PersistenciaDoTreinoIntegracaoTest` (CT-S03.03, CT-S12.01; o mesmo risco afetava CT-S05.02/03) |
+| Sintoma | Erro no **Arrange**: `duplicate key ... execucao_treino_data_referencia_key` |
+| Causa | Um único PostgreSQL compartilhado pela classe (`static @Container`), sem limpeza entre testes. Três testes inserem execução na mesma data, e o resultado dependia da ordem de execução. O CT-S05.03 deixava o advisory lock preso. |
+| Confronto com a fonte | A regra RS-03 ("data_referencia única", §6.3 item 3; ADR-009) estava **correta** e funcionando. O defeito era de isolamento do teste, não de expectativa. |
+| Decisão | Perguntada ao usuário antes de mudar. Opção escolhida: limpar no `@BeforeEach` (TRUNCATE do schema `ml`, checkpoint de volta a `epoch`, encerrar conexões que restaram de testes anteriores). |
+| O que **não** mudou | Asserções, resultados esperados, `@Disabled`, dados de entrada dos casos |
+
+### 7.4 Decisões provisórias tomadas na implementação
+
+Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algum* comportamento, e cada uma aponta para a pergunta que a decide.
+
+| Onde | Comportamento implementado | Pendência |
+|------|----------------------------|-----------|
+| ServicoDeAssinatura: bordas da vigência | O início conta como vigente; o fim não | AM-01 |
+| ServicoDeAssinatura: cancelamento | Registra `canceladaEm`, mas **não corta o acesso antes de `fimVigencia`** | **Q-03**: se o corte for imediato, a regra muda aqui |
+| ServicoDeAssinatura: upgrade | Lança "pendente Q-02". Nenhum teste o exercita (RN-12 inteira está desabilitada). | Q-02 |
+| ServicoDeAssinatura: cancelar sem premium | Não faz nada | QT-10 |
+| ServicoDeConteudo: listagem | Omite os itens negados | QT-12 |
+| ServicoDeConteudo: matéria inexistente | `NoSuchElementException` | Sem regra (404 × 403, ver QT-13) |
+| ServicoDeIdentidade: cadastro | Só e-mail e senha; não impede e-mail repetido | LG-01, QT-01 |
+| ServicoDeIdentidade: código de recuperação | Válido até `emitidoEm + validade`, inclusive o instante exato | AM-01, L-05 |
+| ServicoDeSessao: bordas de TTL e tolerância | O instante exato ainda vale | AM-01 |
+| ServicoDeSessao: logout com token inválido | `token_invalido` | QT-05 |
+| ServicoDeSessao: expiração do refresh | Renovada a cada rotação (janela deslizante) | Q-04 |
+| ServicoDeSessao: chave HMAC | Gerada por instância. **Em produção deve vir de configuração secreta**, senão um reinício invalida as sessões. | Infraestrutura (L-11) |
+| ValidadorDeDados: taxa igual ao limite | Aprova (lê "acima" literalmente) | AM-02 |
+| ValidadorDeDados: janela vazia | Aprova | Volume mínimo (§6.3 item 8) |
+| OrquestradorDoJob: contagem de reprovações | Zera na última CONCLUIDA ou DESCARTADA | QT-14 |
+| OrquestradorDoJob: descarte | Só a REPROVADA mais recente, com responsável e depois de K reprovações | ADR-011 |
+| PromotorDeModelo: rollback sem anterior | Proibido (`TransicaoProibidaException`) | QT-15 |
+| PromotorDeModelo: auditoria | Não registrada: não existe componente de auditoria | DIV-03 |
+
+**Riscos residuais da implementação:**
+1. **Status das versões fora da transação final.** No adaptador JDBC, a mudança de status das versões (ATIVO / APROVADO_INATIVO) acontece antes de `finalizar` e fora da transação dele. Ponteiro, execução e checkpoint continuam atômicos (CT-S10.02), mas uma queda entre os passos pode deixar o status de uma versão divergente do ponteiro. Para fechar, o status precisa entrar na transação de `finalizar`.
+2. **Custo do RegistradorDeEventos.** Ele verifica duplicata lendo todos os eventos, o que é linear no volume. No banco real, a unicidade de `id_evento` já é garantida pela restrição da tabela, e o adaptador JDBC de eventos ainda não existe.
+3. **Escopo do ProvisionadorDeBanco.** Ele cria o esquema e os papéis, mas não substitui um mecanismo de migração versionada.
+
+### 7.5 Matriz atual: regra → caso → teste → status
+
+| Regra | Caso | Teste (classe#método) | Situação no plano | Status green | Observação |
+|-------|------|-----------------------|-------------------|--------------|------------|
+| RN-01 | CT-01.01 | `IdentidadeTest#rn01_ct01_01_cadastroPermiteAutenticar` | Bloqueado: quais campos são obrigatórios e o que é "válido" não está definido (LG-01) | **VERDE** |  |
+| RN-01 | CT-01.02 | `IdentidadeTest#rn01_ct01_02_campoObrigatorioAusente` | Bloqueado: campos e código de erro indefinidos (LG-01, AM-03) | **DESABILITADO** | Bloqueado: LG-01, campos obrigatórios e código de erro do cadastro não definidos |
+| RN-01 | CT-01.03 | `IdentidadeTest#rn01_ct01_03_emailDuplicado` | Bloqueado: a unicidade do e-mail não está escrita em lugar nenhum (QT-01) | **DESABILITADO** | Bloqueado: QT-01, unicidade do e-mail não escrita em nenhum artefato |
+| RN-01 | CT-01.04 | `IdentidadeTest#rn01_ct01_04_contaSemCredencial` | Bloqueado: a regra só existe implicitamente (LG-01) | **DESABILITADO** | Bloqueado: LG-01, regra de conta sem credencial só implícita |
+| RN-02 | CT-02.01 | `IdentidadeTest#rn02_ct02_01_credencialArmazenadaComoHash` | Pronto (mecanismo) | **VERDE** |  |
+| RN-02 | CT-02.02 | `IdentidadeTest#rn02_ct02_02_senhaCorretaAutentica` | Pronto | **VERDE** |  |
+| RN-02 | CT-02.03 | `IdentidadeTest#rn02_ct02_03_senhaErradaNaoAutentica` | Bloqueado: código e corpo da resposta de falha de login indefinidos (AM-03) | **VERDE** |  |
+| RN-02 | CT-02.04 | `IdentidadeTest#rn02_ct02_04_senhaNuncaEmLog` | Condicional (ADR-015: "nenhum token, senha ou e-mail em log") | **VERDE** |  |
+| RN-02 | CT-02.05 | `IdentidadeTest#rn02_ct02_05_senhaForaDaPolitica` | Bloqueado: sem política de credencial (L-06) | **DESABILITADO** | Bloqueado: L-06, sem política de credencial |
+| RN-03 | (sem caso) | `IdentidadeTest#rn03_semCasoPossivel` | — | **DESABILITADO** | Sem regra: LG-02, o artefato só diz que o perfil existe (docs/arquitetura.md D6.1) |
+| RN-04 | CT-04.01 | `IdentidadeTest#rn04_ct04_01_recuperaERevogaSessoes` | Condicional | **VERDE** |  |
+| RN-04 | CT-04.02 | `IdentidadeTest#rn04_ct04_02_respostaIdenticaParaEmailInexistente` | Condicional | **VERDE** |  |
+| RN-04 | CT-04.03 | `IdentidadeTest#rn04_ct04_03_codigoDeUsoUnico` | Condicional | **VERDE** |  |
+| RN-04 | CT-04.04 | `IdentidadeTest#rn04_ct04_04a_codigoAceitoAntesDaValidade`<br>`IdentidadeTest#rn04_ct04_04b_codigoRejeitadoAposValidade`<br>`IdentidadeTest#rn04_ct04_04c_codigoNaBordaDaValidade` | Bloqueado: `T_rec` (L-05) | **VERDE** | 3 execuções |
+| RN-04 | CT-04.05 | `IdentidadeTest#rn04_ct04_05_codigoAdulteradoNaoRevoga` | Condicional | **VERDE** |  |
+| RN-04 | CT-04.06 | `IdentidadeTest#rn04_ct04_06_codigoGuardadoSoComoHash` | Condicional | **VERDE** |  |
+| RN-04 | CT-04.07 | `IdentidadeTest#rn04_ct04_07_doisCodigosEmSequencia` | Bloqueado: não se sabe se o novo invalida o anterior (QT-02) | **DESABILITADO** | Bloqueado: QT-02, novo código invalida o anterior? |
+| RN-05 | CT-05.01 | `SessaoTest#rn05_ct05_01_loginCriaSessaoEEmitePar` | Condicional | **VERDE** |  |
+| RN-05 | CT-05.02 | `SessaoTest#rn05_ct05_02_doisDispositivosDuasSessoes` | Condicional | **VERDE** |  |
+| RN-05 | CT-05.03 | `SessaoTest#rn05_ct05_03_credencialInvalidaNaoCriaSessao` | Condicional (o código de resposta é AM-03) | **VERDE** |  |
+| RN-05 | CT-05.04 | `SessaoTest#rn05_ct05_04_novoLoginMesmoDispositivo` | Bloqueado: não se sabe se substitui ou cria outra sessão (QT-03, AM-10) | **DESABILITADO** | Bloqueado: QT-03 / AM-10, novo login no mesmo dispositivo substitui ou cria sessão? |
+| RN-05 | CT-05.05 | `SessaoTest#rn05_ct05_05_limiteDeSessoes` | Bloqueado: limite de sessões indefinido (Q-05) | **DESABILITADO** | Bloqueado: Q-05, limite de sessões não definido |
+| RN-06 | CT-06.01 | `SessaoTest#rn06_ct06_01_tokenValidoIdentificaUsuario` | Condicional | **VERDE** |  |
+| RN-06 | CT-06.02 | `SessaoTest#rn06_ct06_02_aceitoAntesDoTtl` | Bloqueado: `TTL_acesso` (Q-04) | **VERDE** |  |
+| RN-06 | CT-06.03 | `SessaoTest#rn06_ct06_03_bordaDoTtl` | Bloqueado | **DESABILITADO** | Bloqueado: AM-01, no instante exato do TTL o token expira? |
+| RN-06 | CT-06.04 | `SessaoTest#rn06_ct06_04_expiradoAposTtl` | Bloqueado: `TTL_acesso` | **VERDE** |  |
+| RN-06 | CT-06.05 | `SessaoTest#rn06_ct06_05_tokenMalformado` | Condicional | **VERDE** |  |
+| RN-06 | CT-06.06 | `SessaoTest#rn06_ct06_06_tokenInexistente` | Condicional | **VERDE** |  |
+| RN-06 | CT-06.07 | `SessaoTest#rn06_ct06_07_tokenDeSessaoRevogada` | Condicional | **VERDE** |  |
+| RN-06 | CT-06.08 | `SessaoTest#rn06_ct06_08_expiradoERevogado` | Bloqueado: qual código prevalece (QT-04) | **DESABILITADO** | Bloqueado: QT-04, expirado e revogado ao mesmo tempo: qual código prevalece? |
+| RN-07 | CT-07.01 | `SessaoTest#rn07_ct07_01_renovacaoRotaciona` | Condicional | **VERDE** |  |
+| RN-07 | CT-07.02 | `SessaoTest#rn07_ct07_02_reusoDentroDaTolerancia` | Bloqueado: `T_tol` (EXP-10) | **VERDE** |  |
+| RN-07 | CT-07.03 | `SessaoTest#rn07_ct07_03_reusoForaDaToleranciaRevoga` | Bloqueado: `T_tol` | **VERDE** |  |
+| RN-07 | CT-07.04 | `SessaoTest#rn07_ct07_04_reusoDeOutroDispositivoRevoga` | Condicional; AM-10 (como se identifica "dispositivo") | **VERDE** |  |
+| RN-07 | CT-07.05 | `SessaoTest#rn07_ct07_05_refreshMaisAntigoRevoga` | Condicional | **VERDE** |  |
+| RN-07 | CT-07.06 | `SessaoTest#rn07_ct07_06a_renovacaoAntesDoTtlRefresh`<br>`SessaoTest#rn07_ct07_06b_renovacaoAposTtlRefresh` | Bloqueado: `TTL_refresh` (Q-04) | **VERDE** | 2 execuções |
+| RN-07 | CT-07.07 | `SessaoTest#rn07_ct07_07_refreshInvalido` | Condicional | **VERDE** |  |
+| RN-07 | CT-07.08 | `SessaoTest#rn07_ct07_08_nuncaDoisParesValidos` | Condicional | **VERDE** |  |
+| RN-08 | CT-08.01 | `SessaoTest#rn08_ct08_01_corridaNaMesmaSessao` | Condicional (depende de `T_tol`) | **VERDE** |  |
+| RN-08 | CT-08.02 | `SessaoTest#rn08_ct08_02_corridaEmDispositivosDiferentes` | Condicional | **VERDE** |  |
+| RN-08 | CT-08.03 | `SessaoTest#rn08_ct08_03_umUnicoParAposCorrida` | Condicional | **VERDE** |  |
+| RN-09 | CT-09.01 | `SessaoTest#rn09_ct09_01_logoutInvalidaTokenNaHora` | Condicional | **VERDE** |  |
+| RN-09 | CT-09.02 | `SessaoTest#rn09_ct09_02_logoutInvalidaRefresh` | Condicional | **VERDE** |  |
+| RN-09 | CT-09.03 | `SessaoTest#rn09_ct09_03_logoutSoDoDispositivoAtual` | Condicional; Q-05 (logout global) pode mudar | **VERDE** |  |
+| RN-09 | CT-09.04 | `SessaoTest#rn09_ct09_04_logoutComTokenInvalido` | Bloqueado: resposta indefinida (QT-05) | **DESABILITADO** | Bloqueado: QT-05, resposta do logout com token já inválido não definida |
+| RN-09 | CT-09.05 | `SessaoTest#rn09_ct09_05_sessaoRevogadaNaoRessuscita` | Condicional | **VERDE** |  |
+| RN-10 | CT-10.01 | `AssinaturaTest#rn10_ct10_01_planoInicial` | Bloqueado: não se sabe se todo cadastro começa no free (QT-06) | **DESABILITADO** | Bloqueado: QT-06, todo cadastro começa no free? |
+| RN-10 | CT-10.02 | `AssinaturaTest#rn10_ct10_02_soFreeEPremium` | Pronto (só existem esses dois: `README.md:11`) | **VERDE** |  |
+| RN-10 | CT-10.03 | `AssinaturaTest#rn10_ct10_03_doisPlanosVigentes` | Bloqueado: não está escrito (QT-07) | **DESABILITADO** | Bloqueado: QT-07, mais de uma assinatura vigente é permitida? |
+| RN-11 | CT-11.01 | `AssinaturaTest#rn11_ct11_01_dentroDaVigencia` | Pronto | **VERDE** |  |
+| RN-11 | CT-11.02 | `AssinaturaTest#rn11_ct11_02_antesDoInicio` | Pronto | **VERDE** |  |
+| RN-11 | CT-11.03 | `AssinaturaTest#rn11_ct11_03_bordaDoInicio` | Bloqueado | **DESABILITADO** | Bloqueado: AM-01, no instante exato do início a vigência vale? |
+| RN-11 | CT-11.04 | `AssinaturaTest#rn11_ct11_04_antesDoFim` | Pronto | **VERDE** |  |
+| RN-11 | CT-11.05 | `AssinaturaTest#rn11_ct11_05_bordaDoFim` | Bloqueado | **DESABILITADO** | Bloqueado: AM-01, no instante exato do fim a vigência vale? |
+| RN-11 | CT-11.06 | `AssinaturaTest#rn11_ct11_06_aposOFim` | Pronto | **VERDE** |  |
+| RN-11 | CT-11.07 | `AssinaturaTest#rn11_ct11_07_fimAntesDoInicio` | Bloqueado: a validação não está escrita (QT-08) | **DESABILITADO** | Bloqueado: QT-08, validação de fim < início não escrita |
+| RN-12 | CT-12.01 | `AssinaturaTest#rn12_ct12_01_upgradeLiberaExclusivo` | Bloqueado: o mecanismo do upgrade é desconhecido (Q-02; S-04) | **DESABILITADO** | Bloqueado: Q-02 / S-04, mecanismo do upgrade sem pagamento real desconhecido |
+| RN-12 | CT-12.02 | `AssinaturaTest#rn12_ct12_02_upgradeDePremium` | Bloqueado (QT-09) | **DESABILITADO** | Bloqueado: QT-09, premium vigente pode pedir upgrade? |
+| RN-12 | CT-12.03 | `AssinaturaTest#rn12_ct12_03_upgradeDuplicado` | Bloqueado (QT-07) | **DESABILITADO** | Bloqueado: QT-07, upgrade pode gerar duas assinaturas vigentes? |
+| RN-13 | CT-13.01 | `AssinaturaTest#rn13_ct13_01_exclusivoNegadoAposCorte` | Bloqueado: `t_corte` (Q-03: imediato ou fim da vigência?) | **DESABILITADO** | Bloqueado: Q-03, cancelamento corta na hora ou no fim da vigência (t_corte)? |
+| RN-13 | CT-13.02 | `AssinaturaTest#rn13_ct13_02_bordaDoCorte` | Bloqueado: Q-03; AM-01 para `= t_corte` | **DESABILITADO** | Bloqueado: Q-03 (t_corte) e AM-01 (borda) |
+| RN-13 | CT-13.03 | `AssinaturaTest#rn13_ct13_03_publicoAposCancelar` | Pronto | **VERDE** |  |
+| RN-13 | CT-13.04 | `AssinaturaTest#rn13_ct13_04_contaESessaoAposCancelar` | Pronto | **VERDE** |  |
+| RN-13 | CT-13.05 | `AssinaturaTest#rn13_ct13_05_cancelarFree` | Bloqueado (QT-10) | **DESABILITADO** | Bloqueado: QT-10, cancelar o plano free |
+| RN-13 | CT-13.06 | `AssinaturaTest#rn13_ct13_06_cancelarDuasVezes` | Bloqueado (QT-10) | **DESABILITADO** | Bloqueado: QT-10, cancelar duas vezes |
+| RN-14 | CT-14.01 | `AssinaturaTest#rn14_ct14_01_tokenNaoCarregaPrivilegio` | Pronto | **VERDE** |  |
+| RN-14 | CT-14.02 | `AssinaturaTest#rn14_ct14_02_upgradeSemNovoLogin` | Bloqueado pelo mecanismo de upgrade (Q-02) | **DESABILITADO** | Bloqueado: Q-02, mecanismo do upgrade |
+| RN-15 | CT-15.01 | `AcessoAoConteudoTest#rn15_ct15_01_anonimoLePublico` | Pronto | **VERDE** |  |
+| RN-15 | CT-15.02 | `AcessoAoConteudoTest#rn15_ct15_02_todosOsPerfisLeemPublico` | Pronto | **VERDE** | 3 execuções |
+| RN-15 | CT-15.03 | `AcessoAoConteudoTest#rn15_ct15_03_tokenInvalidoEmPublico` | Bloqueado: 401 ou tratar como anônimo? (QT-11) | **DESABILITADO** | Bloqueado: QT-11, token inválido em rota pública dá 401 ou é tratado como anônimo? |
+| RN-16 | CT-16.01 | `AcessoAoConteudoTest#rn16_ct16_01_premiumVigenteLeExclusivo` | Pronto | **VERDE** |  |
+| RN-16 | CT-16.02 | `AcessoAoConteudoTest#rn16_ct16_02_anonimoEmExclusivo` | Pronto (o nome do código é condicional, ADR-014) | **VERDE** |  |
+| RN-16 | CT-16.03 | `AcessoAoConteudoTest#rn16_ct16_03_freeEmExclusivo` | Pronto (o nome do código é condicional) | **VERDE** |  |
+| RN-16 | CT-16.04 | `AcessoAoConteudoTest#rn16_ct16_04_premiumVencidoEmExclusivo` | Pronto | **VERDE** |  |
+| RN-16 | CT-16.05 | `AcessoAoConteudoTest#rn16_ct16_05_negacaoSemConteudo` | Pronto (CEN-01: "sem nenhum campo do conteúdo exclusivo no corpo") | **VERDE** |  |
+| RN-16 | CT-16.06 | `AcessoAoConteudoTest#rn16_ct16_06_listaMista` | Bloqueado: não se sabe se eles são omitidos ou listados sem corpo (QT-12) | **DESABILITADO** | Bloqueado: QT-12, em listas os exclusivos são omitidos ou listados sem corpo? |
+| RN-16 | CT-16.07 | `AcessoAoConteudoTest#rn16_ct16_07_freeAlemDoAnonimo` | Bloqueado (Q-19) | **DESABILITADO** | Bloqueado: Q-19, o que o free vê a mais que o anônimo |
+| RN-17 | CT-17.01 | `DadosDeUsuarioTest#rn17_ct17_01_propriosDadosPermitidos` | Pronto | **VERDE** |  |
+| RN-17 | CT-17.02 | `DadosDeUsuarioTest#rn17_ct17_02_anonimoEmDadosDeConta` | Pronto (o código específico não está definido na matriz: AM-03) | **VERDE** |  |
+| RN-17 | CT-17.03 | `DadosDeUsuarioTest#rn17_ct17_03_premiumVencidoPropriosDados` | Pronto | **VERDE** |  |
+| RN-18 | CT-18.01 | `DadosDeUsuarioTest#rn18_ct18_01_freeEmOutroUsuario` | Pronto | **VERDE** |  |
+| RN-18 | CT-18.02 | `DadosDeUsuarioTest#rn18_ct18_02_premiumEmOutroUsuario` | Pronto | **VERDE** |  |
+| RN-18 | CT-18.03 | `DadosDeUsuarioTest#rn18_ct18_03_anonimoEmOutroUsuario` | Pronto | **VERDE** |  |
+| RN-18 | CT-18.04 | `DadosDeUsuarioTest#rn18_ct18_04_usuarioInexistente` | Bloqueado: 403 ou 404? O 404 revelaria a existência de contas (QT-13) | **DESABILITADO** | Bloqueado: QT-13, usuário inexistente: 403 ou 404? |
+| RN-19 | CT-19.01 | `AcessoAoConteudoTest#rn19_ct19_01_semClassificacaoNegado` | Pronto | **VERDE** |  |
+| RN-19 | CT-19.02 | `AcessoAoConteudoTest#rn19_ct19_02_todoCaminhoPassaPelaPolitica` | Pronto | **VERDE** |  |
+| RN-19 | CT-19.03 | `AcessoAoConteudoTest#rn19_ct19_03_matrizCompleta` | Pronto, exceto as células do free (Q-19) | **VERDE** | 8 execuções |
+| RN-20 | (sem caso) | `AcessoAoConteudoTest#rn20_semCasoPossivel` | — | **DESABILITADO** | Sem regra: LG-03, nenhum artefato define regra sobre clubes, jogos, resultados ou matérias |
+| RN-21 | CT-21.01 | `ContratoDeErroTest#rn21_ct21_01_problemDetailsComCodigoEstavel` | Condicional (Q-07) | **VERDE** | 5 execuções |
+| RN-21 | CT-21.02 | `ContratoDeErroTest#rn21_ct21_02_mesmaSituacaoMesmoCodigo` | Condicional | **VERDE** |  |
+| RN-21 | CT-21.03 | `ContratoDeErroTest#rn21_ct21_03_semDetalheInterno` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.01 | `JanelaIncrementalTest#rs01_cts01_01_eventosDentroDaJanela` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.02 | `JanelaIncrementalTest#rs01_cts01_02_noWatermarkFora` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.03 | `JanelaIncrementalTest#rs01_cts01_03_logoAposWatermarkDentro` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.04 | `JanelaIncrementalTest#rs01_cts01_04_noCorteDentro` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.05 | `JanelaIncrementalTest#rs01_cts01_05_aposCorteFora` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.06 | `JanelaIncrementalTest#rs01_cts01_06_eventoTardioEntra` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.07 | `OrquestradorDoJobTest#rs01_cts01_07_eventoConsumidoNaoReaparece` | Condicional | **VERDE** |  |
+| RS-01 | CT-S01.08 | `OrquestradorDoJobTest#rs01_cts01_08_corteEInicioMenosMargem` | Bloqueado: `Δ` (Q-15) | **VERDE** |  |
+| RS-02 | CT-S02.01 | `OrquestradorDoJobTest#rs02_cts02_01_concluidaAvancaCheckpoint` | Pronto | **VERDE** |  |
+| RS-02 | CT-S02.02 | `OrquestradorDoJobTest#rs02_cts02_02_falhaMantemCheckpoint` | Pronto | **VERDE** |  |
+| RS-02 | CT-S02.03 | `OrquestradorDoJobTest#rs02_cts02_03_reprovadaMantemCheckpoint` | Condicional (ADR-011) | **VERDE** |  |
+| RS-02 | CT-S02.04 | `OrquestradorDoJobTest#rs02_cts02_04_descarteAvancaCheckpoint` | Condicional (ADR-011) | **VERDE** |  |
+| RS-02 | CT-S02.05 | `OrquestradorDoJobTest#rs02_cts02_05_checkpointSoDeExecucaoTerminal` | Pronto | **VERDE** |  |
+| RS-03 | CT-S03.01 | `OrquestradorDoJobTest#rs03_cts03_01_concluidaSemEfeito` | Pronto | **VERDE** |  |
+| RS-03 | CT-S03.02 | `OrquestradorDoJobTest#rs03_cts03_02_retomadaComMesmaJanela` | Pronto | **VERDE** |  |
+| RS-03 | CT-S03.03 | `PersistenciaDoTreinoIntegracaoTest#rs03_cts03_03_dataReferenciaUnica` | Pronto | **VERDE** |  |
+| RS-04 | CT-S04.01 | `JanelaIncrementalTest#rs04_cts04_01_registradorNaoDuplica` | Condicional | **VERDE** |  |
+| RS-04 | CT-S04.02 | `JanelaIncrementalTest#rs04_cts04_02_extratorDeduplica` | Condicional | **VERDE** |  |
+| RS-04 | CT-S04.03 | `JanelaIncrementalTest#rs04_cts04_03_duplicataDeNegocio` | Bloqueado: chave de negócio (Q-09; RA-02) | **DESABILITADO** | Bloqueado: Q-09 / RA-02, chave de negócio de deduplicação depende do Modelo M |
+| RS-05 | CT-S05.01 | `OrquestradorDoJobTest#rs05_cts05_01_lockIndisponivelSemEfeito` | Pronto | **VERDE** |  |
+| RS-05 | CT-S05.02 | `PersistenciaDoTreinoIntegracaoTest#rs05_cts05_02_quedaLiberaLock` | Pronto | **VERDE** |  |
+| RS-05 | CT-S05.03 | `PersistenciaDoTreinoIntegracaoTest#rs05_cts05_03_umLockPorVez` | Pronto | **VERDE** |  |
+| RS-06 | CT-S06.01 | `OrquestradorDoJobTest#rs06_cts06_01_falhaAposCandidato` | Pronto | **VERDE** |  |
+| RS-06 | CT-S06.02 | `OrquestradorDoJobTest#rs06_cts06_02_orfaoArquivadoNaSeguinte` | Pronto | **VERDE** |  |
+| RS-06 | CT-S06.03 | `OrquestradorDoJobTest#rs06_cts06_03a_transitorioRecupera`<br>`OrquestradorDoJobTest#rs06_cts06_03b_transitorioEsgota` | Bloqueado: número de tentativas indefinido | **VERDE** | 2 execuções |
+| RS-06 | CT-S06.04 | `OrquestradorDoJobTest#rs06_cts06_04_erroDeDadosSemRetry` | Pronto | **VERDE** |  |
+| RS-07 | CT-S07.01 | `ValidadorDeDadosTest#rs07_cts07_01_esquemasNeNMenos1` | Condicional | **VERDE** |  |
+| RS-07 | CT-S07.02 | `ValidadorDeDadosTest#rs07_cts07_02_esquemaDesconhecidoEmQuarentena` | Condicional | **VERDE** |  |
+| RS-07 | CT-S07.03 | `ValidadorDeDadosTest#rs07_cts07_03c_igualAoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03b_acimaDoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03a_abaixoDoLimite` | Bloqueado: `L_quar` | **VERDE** | 3 execuções |
+| RS-07 | CT-S07.04 | `OrquestradorDoJobTest#rs07_cts07_04_treinoSemEsquemaDesconhecido` | Condicional | **VERDE** |  |
+| RS-07 | CT-S07.05 | `ValidadorDeDadosTest#rs07_cts07_05_volumeMinimo` | Bloqueado: volume mínimo indefinido | **DESABILITADO** | Bloqueado: volume mínimo da janela não definido (§6.3 item 8) |
+| RS-08 | CT-S08.01 | `GateDePromocaoTest#rs08_cts08_01_candidatoMelhorAprova` | Bloqueado (métrica, Q-09) | **VERDE** |  |
+| RS-08 | CT-S08.02 | `GateDePromocaoTest#rs08_cts08_02_exatamenteNaToleranciaAprova` | Bloqueado (`tol_gate`) | **VERDE** |  |
+| RS-08 | CT-S08.03 | `GateDePromocaoTest#rs08_cts08_03_abaixoDaToleranciaReprova` | Bloqueado | **VERDE** |  |
+| RS-08 | CT-S08.04 | `GateDePromocaoTest#rs08_cts08_04_sanidadeEDadosSaoObrigatorios` | Pronto (a sanidade é condição obrigatória) | **VERDE** |  |
+| RS-08 | CT-S08.05 | `GateDePromocaoTest#rs08_cts08_05b_primeiraExecucaoAbaixoDoPiso`<br>`GateDePromocaoTest#rs08_cts08_05a_primeiraExecucaoNoPiso` | Bloqueado (`piso`) | **VERDE** | 2 execuções |
+| RS-09 | CT-S09.01 | `OrquestradorDoJobTest#rs09_cts09_01_reprovacao` | Condicional | **VERDE** |  |
+| RS-09 | CT-S09.02 | `OrquestradorDoJobTest#rs09_cts09_02_proximaUsaAtivoEJanelaAcumulada` | Condicional | **VERDE** |  |
+| RS-09 | CT-S09.03 | `OrquestradorDoJobTest#rs09_cts09_03_limiteK` | Bloqueado: `K` | **VERDE** |  |
+| RS-09 | CT-S09.04 | `OrquestradorDoJobTest#rs09_cts09_04a_descarteAntesDeK`<br>`OrquestradorDoJobTest#rs09_cts09_04b_descarteSemResponsavel` | Condicional | **VERDE** | 2 execuções |
+| RS-09 | CT-S09.05 | `OrquestradorDoJobTest#rs09_cts09_05_contadorZera` | Bloqueado: não está escrito que zera (QT-14) | **DESABILITADO** | Bloqueado: QT-14, o contador de reprovações consecutivas zera numa aprovação? |
+| RS-10 | CT-S10.01 | `OrquestradorDoJobTest#rs10_cts10_01_promocao` | Pronto | **VERDE** |  |
+| RS-10 | CT-S10.02 | `PersistenciaDoTreinoIntegracaoTest#rs10_cts10_02_transacaoFinalTudoOuNada` | Pronto | **VERDE** |  |
+| RS-10 | CT-S10.03 | `OrquestradorDoJobTest#rs10_cts10_03_ponteiroECheckpointJuntos` | Pronto | **VERDE** |  |
+| RS-11 | CT-S11.01 | `VersoesEPonteiroTest#rs11_cts11_01_rollback` | Pronto | **VERDE** |  |
+| RS-11 | CT-S11.02 | `VersoesEPonteiroTest#rs11_cts11_02_ponteiroSoParaVersaoAprovada` | Pronto | **VERDE** | 3 execuções |
+| RS-11 | CT-S11.03 | `PersistenciaDoTreinoIntegracaoTest#rs11_cts11_03_apiNaoAlteraPonteiro` | Pronto | **VERDE** |  |
+| RS-11 | CT-S11.04 | `VersoesEPonteiroTest#rs11_cts11_04_rollbackSemAnterior` | Bloqueado: comportamento indefinido (QT-15) | **DESABILITADO** | Bloqueado: QT-15, rollback sem versão anterior é proibido ou volta para sem modelo? |
+| RS-11 | CT-S11.05 | `VersoesEPonteiroTest#rs11_cts11_05_transicoesDeVersao` | Pronto (§6.4 lista só as transições permitidas) | **VERDE** | 25 execuções |
+| RS-12 | CT-S12.01 | `PersistenciaDoTreinoIntegracaoTest#rs12_cts12_01_versaoImutavel` | Pronto | **VERDE** |  |
+| RS-12 | CT-S12.02 | `PersistenciaDoTreinoIntegracaoTest#rs12_cts12_02_artefatoNaoSobrescrito` | Condicional (ADR-013) | **DESABILITADO** | Bloqueado: L-11, tecnologia do Armazenamento de Artefatos adiada (ADR-013) |
+| RS-13 | CT-S13.01 | `LeitorDoModeloAtivoTest#rs13_cts13_01_trocaAposCargaValida` | Condicional | **VERDE** |  |
+| RS-13 | CT-S13.02 | `LeitorDoModeloAtivoTest#rs13_cts13_02_corrompidoMantemAtual` | Condicional | **VERDE** |  |
+| RS-13 | CT-S13.03 | `LeitorDoModeloAtivoTest#rs13_cts13_03_fallbackSemModelo` | Condicional | **VERDE** |  |
+| RS-13 | CT-S13.04 | `LeitorDoModeloAtivoTest#rs13_cts13_04_artefatoAusenteMantemAtual` | Condicional | **VERDE** |  |
+| RS-14 | CT-S14.01 | `OrquestradorDoJobTest#rs14_cts14_01_baseEOAtivo` | Pronto | **VERDE** |  |
+| RS-14 | CT-S14.02 | `OrquestradorDoJobTest#rs14_cts14_02_semDadosAntigos` | Pronto | **VERDE** |  |
+| RS-15 | CT-S15.01 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_01_batchLeitorSemAcessoAApp` | Condicional | **VERDE** |  |
+| RS-15 | CT-S15.02 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_02_batchLeitorLeEventos` | Condicional | **VERDE** |  |
+| RS-15 | CT-S15.03 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_03_apiNaoEscreveEmMl` | Condicional | **VERDE** |  |

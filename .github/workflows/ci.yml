@@ -1,0 +1,54 @@
+name: CI
+
+# Dispara em todo pull request e em push na main. Sem pull_request_target e sem segredos:
+# o workflow roda com o token padrão, só com permissão de leitura.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Cancela execuções obsoletas do mesmo PR (ou da mesma branch) quando chega um commit novo.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    # Este nome é o check exigido pela proteção da main.
+    name: verify (Java 21)
+    # Versão fixa: ubuntu-latest passará a apontar para o Ubuntu 26 (actions/runner-images#14748).
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: JDK 21 (Temurin) com cache do Maven
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: maven
+
+      # Os testes de integração usam Testcontainers; o runner Ubuntu já tem Docker.
+      - name: Docker disponível
+        run: docker version
+
+      # O mesmo comando usado localmente. Nenhum teste é pulado.
+      - name: ./mvnw -B verify
+        run: ./mvnw -B verify
+
+      - name: Relatórios do Surefire e do Failsafe
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: relatorios-de-teste-${{ github.run_id }}
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
+          if-no-files-found: ignore
+          retention-days: 7
