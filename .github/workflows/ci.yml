@@ -1,48 +1,54 @@
 name: CI
 
+# Dispara em todo pull request e em push na main. Sem pull_request_target e sem segredos:
+# o workflow roda com o token padrão, só com permissão de leitura.
 on:
-  push:
-    branches: [master, main]
   pull_request:
-    branches: [master, main]
-  workflow_dispatch:
+  push:
+    branches: [main]
 
 permissions:
   contents: read
 
+# Cancela execuções obsoletas do mesmo PR (ou da mesma branch) quando chega um commit novo.
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
 jobs:
-  build:
-    name: Build e testes (Java 21)
-    runs-on: ubuntu-latest
+  verify:
+    # Este nome é o check exigido pela proteção da main.
+    name: verify (Java 21)
+    # Versão fixa: ubuntu-latest passará a apontar para o Ubuntu 26 (actions/runner-images#14748).
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
-      - name: Configurar JDK 21 (Temurin) com cache do Maven
-        uses: actions/setup-java@v4
+      - name: JDK 21 (Temurin) com cache do Maven
+        uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: '21'
           cache: maven
 
-      # O runner ubuntu-latest já tem Docker, que os testes com Testcontainers exigem.
-      - name: Verificar Docker
+      # Os testes de integração usam Testcontainers; o runner Ubuntu já tem Docker.
+      - name: Docker disponível
         run: docker version
 
-      - name: Build e testes
+      # O mesmo comando usado localmente. Nenhum teste é pulado.
+      - name: ./mvnw -B verify
         run: ./mvnw -B verify
 
-      - name: Publicar relatórios de teste
+      - name: Relatórios do Surefire e do Failsafe
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
-          name: relatorios-de-teste
-          path: target/surefire-reports/
+          name: relatorios-de-teste-${{ github.run_id }}
+          path: |
+            target/surefire-reports/
+            target/failsafe-reports/
           if-no-files-found: ignore
-          retention-days: 14
+          retention-days: 7
