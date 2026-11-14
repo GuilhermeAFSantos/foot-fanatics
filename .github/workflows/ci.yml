@@ -1,7 +1,7 @@
 name: CI
 
-# Dispara em todo pull request e em push na main. Sem pull_request_target e sem segredos:
-# o workflow roda com o token padrão, só com permissão de leitura.
+# Dispara em todo pull request e em push na main. Sem pull_request_target: o workflow roda com o token
+# padrão, só com permissão de leitura. O único secret é SONAR_TOKEN, usado só no step do SonarCloud.
 on:
   pull_request:
   push:
@@ -24,8 +24,11 @@ jobs:
     timeout-minutes: 20
 
     steps:
+      # fetch-depth: 0 = histórico completo, para o SonarCloud identificar o código novo e o blame.
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
 
       - name: JDK 21 (Temurin) com cache do Maven
         uses: actions/setup-java@v5
@@ -41,6 +44,18 @@ jobs:
       # O mesmo comando usado localmente. Nenhum teste é pulado.
       - name: ./mvnw -B verify
         run: ./mvnw -B verify
+
+      # Análise estática no SonarCloud sobre o build acima (classes compiladas + target/site/jacoco/jacoco.xml).
+      # Só o goal sonar roda aqui: nenhum teste é pulado, porque a suíte já rodou no step anterior.
+      # qualitygate.wait=true faz o step (e o check exigido "verify (Java 21)") falhar quando o Quality Gate
+      # do código novo reprova. O token vem só do secret, como variável de ambiente que o scanner lê; nunca
+      # vai para a linha de comando, arquivo ou log. PRs de fork não recebem secrets: para eles o step é
+      # pulado, em vez de falhar por falta de token.
+      - name: Análise SonarCloud e Quality Gate
+        if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        run: ./mvnw -B org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.qualitygate.wait=true
 
       - name: Relatórios do Surefire e do Failsafe
         if: always()

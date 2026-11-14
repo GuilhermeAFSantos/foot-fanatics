@@ -1,6 +1,8 @@
 package br.senac.footfanatics.infra;
 
 import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import javax.sql.DataSource;
@@ -67,9 +69,9 @@ public class ProvisionadorDeBanco {
             for (String sql : ESQUEMA) {
                 st.execute(sql);
             }
-            papel(st, "api_app", credenciais.senhaApiApp());
-            papel(st, "batch_leitor", credenciais.senhaBatchLeitor());
-            papel(st, "batch_registry", credenciais.senhaBatchRegistry());
+            papel(con, st, "api_app", credenciais.senhaApiApp());
+            papel(con, st, "batch_leitor", credenciais.senhaBatchLeitor());
+            papel(con, st, "batch_registry", credenciais.senhaBatchRegistry());
             for (String sql : privilegios()) {
                 st.execute(sql);
             }
@@ -97,10 +99,32 @@ public class ProvisionadorDeBanco {
         };
     }
 
-    private static void papel(Statement st, String nome, String senha) throws SQLException {
-        String literal = "'" + senha.replace("'", "''") + "'";
-        st.execute("DO $$ BEGIN IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = '" + nome + "') THEN"
-                + " CREATE ROLE " + nome + " LOGIN PASSWORD " + literal + ";"
-                + " ELSE ALTER ROLE " + nome + " LOGIN PASSWORD " + literal + "; END IF; END $$");
+    /**
+     * Cria ou atualiza o papel com a senha da configuração. CREATE/ALTER ROLE não aceitam parâmetro de
+     * PreparedStatement, então o próprio PostgreSQL monta o comando com format(%I, %L): o nome sai como
+     * identificador e a senha como literal com quoting do servidor. Antes, a senha era concatenada num bloco
+     * DO $$ ... $$, e uma senha contendo "$$" encerrava o bloco e injetava SQL (SonarCloud java:S2077).
+     */
+    private static void papel(Connection con, Statement st, String nome, String senha) throws SQLException {
+        boolean existe;
+        try (PreparedStatement ps = con.prepareStatement("SELECT 1 FROM pg_roles WHERE rolname = ?")) {
+            ps.setString(1, nome);
+            try (ResultSet rs = ps.executeQuery()) {
+                existe = rs.next();
+            }
+        }
+        String modelo = existe
+                ? "SELECT format('ALTER ROLE %I LOGIN PASSWORD %L', ?, ?)"
+                : "SELECT format('CREATE ROLE %I LOGIN PASSWORD %L', ?, ?)";
+        String comando;
+        try (PreparedStatement ps = con.prepareStatement(modelo)) {
+            ps.setString(1, nome);
+            ps.setString(2, senha);
+            try (ResultSet rs = ps.executeQuery()) {
+                rs.next();
+                comando = rs.getString(1);
+            }
+        }
+        st.execute(comando);
     }
 }
