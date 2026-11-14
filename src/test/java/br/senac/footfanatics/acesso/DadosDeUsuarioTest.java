@@ -92,4 +92,22 @@ class DadosDeUsuarioTest {
     @DisplayName("RN-18 · CT-18.04 · identificador de usuário inexistente")
     void rn18_ct18_04_usuarioInexistente() {
     }
+
+    // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
+
+    @Test
+    @DisplayName("RN-17 · CT-17.04 · sem principal algum (nulo) é tratado como anônimo → 401")
+    void rn17_ct17_04_principalNulo() {
+        UUID dono = c.usuarioFree();
+
+        assertEquals(CodigoDeErro.AUTENTICACAO_NECESSARIA, negado(null, dono));
+    }
+
+    @Test
+    @DisplayName("RN-19 · CT-19.04 · dado sem dono identificado é negado por padrão, mesmo a usuário autenticado")
+    void rn19_ct19_04_dadoSemDonoNegado() {
+        UUID premium = c.usuarioPremiumVigente();
+
+        assertEquals(CodigoDeErro.ACESSO_NEGADO, negado(Principal.de(premium), null));
+    }
 }

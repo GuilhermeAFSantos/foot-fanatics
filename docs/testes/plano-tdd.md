@@ -813,11 +813,14 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-04 | CT-04.05 | `IdentidadeTest#rn04_ct04_05_codigoAdulteradoNaoRevoga` | Condicional | **VERDE** |  |
 | RN-04 | CT-04.06 | `IdentidadeTest#rn04_ct04_06_codigoGuardadoSoComoHash` | Condicional | **VERDE** |  |
 | RN-04 | CT-04.07 | `IdentidadeTest#rn04_ct04_07_doisCodigosEmSequencia` | Bloqueado: não se sabe se o novo invalida o anterior (QT-02) | **DESABILITADO** | Bloqueado: QT-02, novo código invalida o anterior? |
+| RN-04 | CT-04.08 | `IdentidadeTest#rn04_ct04_08_recuperacaoRevogaSoDoTitular` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | cobre o filtro por usuário de `ServicoDeSessao.revogarTodas` |
+| RN-04 | CT-04.09 | `IdentidadeTest#rn04_ct04_09_redefinicaoSemCodigo` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RN-05 | CT-05.01 | `SessaoTest#rn05_ct05_01_loginCriaSessaoEEmitePar` | Condicional | **VERDE** |  |
 | RN-05 | CT-05.02 | `SessaoTest#rn05_ct05_02_doisDispositivosDuasSessoes` | Condicional | **VERDE** |  |
 | RN-05 | CT-05.03 | `SessaoTest#rn05_ct05_03_credencialInvalidaNaoCriaSessao` | Condicional (o código de resposta é AM-03) | **VERDE** |  |
 | RN-05 | CT-05.04 | `SessaoTest#rn05_ct05_04_novoLoginMesmoDispositivo` | Bloqueado: não se sabe se substitui ou cria outra sessão (QT-03, AM-10) | **DESABILITADO** | Bloqueado: QT-03 / AM-10, novo login no mesmo dispositivo substitui ou cria sessão? |
 | RN-05 | CT-05.05 | `SessaoTest#rn05_ct05_05_limiteDeSessoes` | Bloqueado: limite de sessões indefinido (Q-05) | **DESABILITADO** | Bloqueado: Q-05, limite de sessões não definido |
+| RN-05 | CT-05.06 | `IdentidadeTest#rn05_ct05_06_credencialAusente` (parametrizado: e-mail nulo, senha nula) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RN-06 | CT-06.01 | `SessaoTest#rn06_ct06_01_tokenValidoIdentificaUsuario` | Condicional | **VERDE** |  |
 | RN-06 | CT-06.02 | `SessaoTest#rn06_ct06_02_aceitoAntesDoTtl` | Bloqueado: `TTL_acesso` (Q-04) | **VERDE** |  |
 | RN-06 | CT-06.03 | `SessaoTest#rn06_ct06_03_bordaDoTtl` | Bloqueado | **DESABILITADO** | Bloqueado: AM-01, no instante exato do TTL o token expira? |
@@ -826,6 +829,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-06 | CT-06.06 | `SessaoTest#rn06_ct06_06_tokenInexistente` | Condicional | **VERDE** |  |
 | RN-06 | CT-06.07 | `SessaoTest#rn06_ct06_07_tokenDeSessaoRevogada` | Condicional | **VERDE** |  |
 | RN-06 | CT-06.08 | `SessaoTest#rn06_ct06_08_expiradoERevogado` | Bloqueado: qual código prevalece (QT-04) | **DESABILITADO** | Bloqueado: QT-04, expirado e revogado ao mesmo tempo: qual código prevalece? |
+| RN-06 | CT-06.09 | `SessaoTest#rn06_ct06_09_tokenAusenteOuIlegivel` (parametrizado: nulo, vazio, HMAC vazio, id ilegível, versão não numérica) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | token ausente sai como `token_invalido` (RN-06). A Aula 07 cita `TOKEN_AUSENTE`: divergência registrada em §8.5 |
 | RN-07 | CT-07.01 | `SessaoTest#rn07_ct07_01_renovacaoRotaciona` | Condicional | **VERDE** |  |
 | RN-07 | CT-07.02 | `SessaoTest#rn07_ct07_02_reusoDentroDaTolerancia` | Bloqueado: `T_tol` (EXP-10) | **VERDE** |  |
 | RN-07 | CT-07.03 | `SessaoTest#rn07_ct07_03_reusoForaDaToleranciaRevoga` | Bloqueado: `T_tol` | **VERDE** |  |
@@ -834,6 +838,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-07 | CT-07.06 | `SessaoTest#rn07_ct07_06a_renovacaoAntesDoTtlRefresh`<br>`SessaoTest#rn07_ct07_06b_renovacaoAposTtlRefresh` | Bloqueado: `TTL_refresh` (Q-04) | **VERDE** | 2 execuções |
 | RN-07 | CT-07.07 | `SessaoTest#rn07_ct07_07_refreshInvalido` | Condicional | **VERDE** |  |
 | RN-07 | CT-07.08 | `SessaoTest#rn07_ct07_08_nuncaDoisParesValidos` | Condicional | **VERDE** |  |
+| RN-07 | CT-07.09 | `SessaoTest#rn07_ct07_09_refreshForjadoNaoRevoga` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RN-08 | CT-08.01 | `SessaoTest#rn08_ct08_01_corridaNaMesmaSessao` | Condicional (depende de `T_tol`) | **VERDE** |  |
 | RN-08 | CT-08.02 | `SessaoTest#rn08_ct08_02_corridaEmDispositivosDiferentes` | Condicional | **VERDE** |  |
 | RN-08 | CT-08.03 | `SessaoTest#rn08_ct08_03_umUnicoParAposCorrida` | Condicional | **VERDE** |  |
@@ -842,6 +847,8 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-09 | CT-09.03 | `SessaoTest#rn09_ct09_03_logoutSoDoDispositivoAtual` | Condicional; Q-05 (logout global) pode mudar | **VERDE** |  |
 | RN-09 | CT-09.04 | `SessaoTest#rn09_ct09_04_logoutComTokenInvalido` | Bloqueado: resposta indefinida (QT-05) | **DESABILITADO** | Bloqueado: QT-05, resposta do logout com token já inválido não definida |
 | RN-09 | CT-09.05 | `SessaoTest#rn09_ct09_05_sessaoRevogadaNaoRessuscita` | Condicional | **VERDE** |  |
+| RN-09 | CT-09.06 | `SessaoTest#rn09_ct09_06_logoutConcorrenteComRenovacao` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | corrida determinística com dublê, sem threads; relógio `Clock.fixed` |
+| RN-09 | CT-09.07 | `SessaoTest#rn09_ct09_07_logoutConcorrenteComRevogacao` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | relógio `Clock.fixed` |
 | RN-10 | CT-10.01 | `AssinaturaTest#rn10_ct10_01_planoInicial` | Bloqueado: não se sabe se todo cadastro começa no free (QT-06) | **DESABILITADO** | Bloqueado: QT-06, todo cadastro começa no free? |
 | RN-10 | CT-10.02 | `AssinaturaTest#rn10_ct10_02_soFreeEPremium` | Pronto (só existem esses dois: `README.md:11`) | **VERDE** |  |
 | RN-10 | CT-10.03 | `AssinaturaTest#rn10_ct10_03_doisPlanosVigentes` | Bloqueado: não está escrito (QT-07) | **DESABILITADO** | Bloqueado: QT-07, mais de uma assinatura vigente é permitida? |
@@ -876,6 +883,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-17 | CT-17.01 | `DadosDeUsuarioTest#rn17_ct17_01_propriosDadosPermitidos` | Pronto | **VERDE** |  |
 | RN-17 | CT-17.02 | `DadosDeUsuarioTest#rn17_ct17_02_anonimoEmDadosDeConta` | Pronto (o código específico não está definido na matriz: AM-03) | **VERDE** |  |
 | RN-17 | CT-17.03 | `DadosDeUsuarioTest#rn17_ct17_03_premiumVencidoPropriosDados` | Pronto | **VERDE** |  |
+| RN-17 | CT-17.04 | `DadosDeUsuarioTest#rn17_ct17_04_principalNulo` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RN-18 | CT-18.01 | `DadosDeUsuarioTest#rn18_ct18_01_freeEmOutroUsuario` | Pronto | **VERDE** |  |
 | RN-18 | CT-18.02 | `DadosDeUsuarioTest#rn18_ct18_02_premiumEmOutroUsuario` | Pronto | **VERDE** |  |
 | RN-18 | CT-18.03 | `DadosDeUsuarioTest#rn18_ct18_03_anonimoEmOutroUsuario` | Pronto | **VERDE** |  |
@@ -883,6 +891,8 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-19 | CT-19.01 | `AcessoAoConteudoTest#rn19_ct19_01_semClassificacaoNegado` | Pronto | **VERDE** |  |
 | RN-19 | CT-19.02 | `AcessoAoConteudoTest#rn19_ct19_02_todoCaminhoPassaPelaPolitica` | Pronto | **VERDE** |  |
 | RN-19 | CT-19.03 | `AcessoAoConteudoTest#rn19_ct19_03_matrizCompleta` | Pronto, exceto as células do free (Q-19) | **VERDE** | 8 execuções |
+| RN-19 | CT-19.04 | `DadosDeUsuarioTest#rn19_ct19_04_dadoSemDonoNegado` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
+| RN-19 | CT-19.05 | `AcessoAoConteudoTest#rn19_ct19_05_listagemRespeitaAPolitica` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | asserção válida nas duas leituras de QT-12 |
 | RN-20 | (sem caso) | `AcessoAoConteudoTest#rn20_semCasoPossivel` | — | **DESABILITADO** | Sem regra: LG-03, nenhum artefato define regra sobre clubes, jogos, resultados ou matérias |
 | RN-21 | CT-21.01 | `ContratoDeErroTest#rn21_ct21_01_problemDetailsComCodigoEstavel` | Condicional (Q-07) | **VERDE** | 5 execuções |
 | RN-21 | CT-21.02 | `ContratoDeErroTest#rn21_ct21_02_mesmaSituacaoMesmoCodigo` | Condicional | **VERDE** |  |
@@ -900,6 +910,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RS-02 | CT-S02.03 | `OrquestradorDoJobTest#rs02_cts02_03_reprovadaMantemCheckpoint` | Condicional (ADR-011) | **VERDE** |  |
 | RS-02 | CT-S02.04 | `OrquestradorDoJobTest#rs02_cts02_04_descarteAvancaCheckpoint` | Condicional (ADR-011) | **VERDE** |  |
 | RS-02 | CT-S02.05 | `OrquestradorDoJobTest#rs02_cts02_05_checkpointSoDeExecucaoTerminal` | Pronto | **VERDE** |  |
+| RS-02 | CT-S02.06 | `PersistenciaDoTreinoIntegracaoTest#rs02_cts02_06_reprovadaNaoMoveCheckpointNoBanco` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RS-03 | CT-S03.01 | `OrquestradorDoJobTest#rs03_cts03_01_concluidaSemEfeito` | Pronto | **VERDE** |  |
 | RS-03 | CT-S03.02 | `OrquestradorDoJobTest#rs03_cts03_02_retomadaComMesmaJanela` | Pronto | **VERDE** |  |
 | RS-03 | CT-S03.03 | `PersistenciaDoTreinoIntegracaoTest#rs03_cts03_03_dataReferenciaUnica` | Pronto | **VERDE** |  |
@@ -909,6 +920,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RS-05 | CT-S05.01 | `OrquestradorDoJobTest#rs05_cts05_01_lockIndisponivelSemEfeito` | Pronto | **VERDE** |  |
 | RS-05 | CT-S05.02 | `PersistenciaDoTreinoIntegracaoTest#rs05_cts05_02_quedaLiberaLock` | Pronto | **VERDE** |  |
 | RS-05 | CT-S05.03 | `PersistenciaDoTreinoIntegracaoTest#rs05_cts05_03_umLockPorVez` | Pronto | **VERDE** |  |
+| RS-05 | CT-S05.04 | `PersistenciaDoTreinoIntegracaoTest#rs05_cts05_04_liberarPermiteAProxima` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RS-06 | CT-S06.01 | `OrquestradorDoJobTest#rs06_cts06_01_falhaAposCandidato` | Pronto | **VERDE** |  |
 | RS-06 | CT-S06.02 | `OrquestradorDoJobTest#rs06_cts06_02_orfaoArquivadoNaSeguinte` | Pronto | **VERDE** |  |
 | RS-06 | CT-S06.03 | `OrquestradorDoJobTest#rs06_cts06_03a_transitorioRecupera`<br>`OrquestradorDoJobTest#rs06_cts06_03b_transitorioEsgota` | Bloqueado: número de tentativas indefinido | **VERDE** | 2 execuções |
@@ -918,6 +930,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RS-07 | CT-S07.03 | `ValidadorDeDadosTest#rs07_cts07_03c_igualAoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03b_acimaDoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03a_abaixoDoLimite` | Bloqueado: `L_quar` | **VERDE** | 3 execuções |
 | RS-07 | CT-S07.04 | `OrquestradorDoJobTest#rs07_cts07_04_treinoSemEsquemaDesconhecido` | Condicional | **VERDE** |  |
 | RS-07 | CT-S07.05 | `ValidadorDeDadosTest#rs07_cts07_05_volumeMinimo` | Bloqueado: volume mínimo indefinido | **DESABILITADO** | Bloqueado: volume mínimo da janela não definido (§6.3 item 8) |
+| RS-07 | CT-S07.06 | `OrquestradorDoJobTest#rs07_cts07_06_quarentenaNoJob` (trinca −1/0/+1) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | no limite exato segue AM-02 (provisório, como CT-S07.03c) |
 | RS-08 | CT-S08.01 | `GateDePromocaoTest#rs08_cts08_01_candidatoMelhorAprova` | Bloqueado (métrica, Q-09) | **VERDE** |  |
 | RS-08 | CT-S08.02 | `GateDePromocaoTest#rs08_cts08_02_exatamenteNaToleranciaAprova` | Bloqueado (`tol_gate`) | **VERDE** |  |
 | RS-08 | CT-S08.03 | `GateDePromocaoTest#rs08_cts08_03_abaixoDaToleranciaReprova` | Bloqueado | **VERDE** |  |
@@ -926,16 +939,22 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RS-09 | CT-S09.01 | `OrquestradorDoJobTest#rs09_cts09_01_reprovacao` | Condicional | **VERDE** |  |
 | RS-09 | CT-S09.02 | `OrquestradorDoJobTest#rs09_cts09_02_proximaUsaAtivoEJanelaAcumulada` | Condicional | **VERDE** |  |
 | RS-09 | CT-S09.03 | `OrquestradorDoJobTest#rs09_cts09_03_limiteK` | Bloqueado: `K` | **VERDE** |  |
-| RS-09 | CT-S09.04 | `OrquestradorDoJobTest#rs09_cts09_04a_descarteAntesDeK`<br>`OrquestradorDoJobTest#rs09_cts09_04b_descarteSemResponsavel` | Condicional | **VERDE** | 2 execuções |
+| RS-09 | CT-S09.04 | `OrquestradorDoJobTest#rs09_cts09_04a_descarteAntesDeK`<br>`OrquestradorDoJobTest#rs09_cts09_04b_descarteSemResponsavel`<br>`OrquestradorDoJobTest#rs09_cts09_04c_descarteComResponsavelNuloOuVazio` (Aula 07) | Condicional | **VERDE** | 2 execuções |
 | RS-09 | CT-S09.05 | `OrquestradorDoJobTest#rs09_cts09_05_contadorZera` | Bloqueado: não está escrito que zera (QT-14) | **DESABILITADO** | Bloqueado: QT-14, o contador de reprovações consecutivas zera numa aprovação? |
+| RS-09 | CT-S09.06 | `OrquestradorDoJobTest#rs09_cts09_06_descarteSoDaMaisRecente` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
+| RS-09 | CT-S09.07 | `OrquestradorDoJobTest#rs09_cts09_07a_descarteDeExecucaoInexistente`<br>`OrquestradorDoJobTest#rs09_cts09_07b_descarteDeExecucaoConcluida` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RS-10 | CT-S10.01 | `OrquestradorDoJobTest#rs10_cts10_01_promocao` | Pronto | **VERDE** |  |
-| RS-10 | CT-S10.02 | `PersistenciaDoTreinoIntegracaoTest#rs10_cts10_02_transacaoFinalTudoOuNada` | Pronto | **VERDE** |  |
+| RS-10 | CT-S10.02 | `PersistenciaDoTreinoIntegracaoTest#rs10_cts10_02_transacaoFinalTudoOuNada` | Pronto | **VERDE** | a asserção do checkpoint passou a valer de fato depois da correção do isolamento (§8.4) |
 | RS-10 | CT-S10.03 | `OrquestradorDoJobTest#rs10_cts10_03_ponteiroECheckpointJuntos` | Pronto | **VERDE** |  |
+| RS-10 | CT-S10.04 | `PersistenciaDoTreinoIntegracaoTest#rs10_cts10_04_transacaoFinalConfirmada` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | revelou o defeito D-01 (§8.4), corrigido |
 | RS-11 | CT-S11.01 | `VersoesEPonteiroTest#rs11_cts11_01_rollback` | Pronto | **VERDE** |  |
 | RS-11 | CT-S11.02 | `VersoesEPonteiroTest#rs11_cts11_02_ponteiroSoParaVersaoAprovada` | Pronto | **VERDE** | 3 execuções |
 | RS-11 | CT-S11.03 | `PersistenciaDoTreinoIntegracaoTest#rs11_cts11_03_apiNaoAlteraPonteiro` | Pronto | **VERDE** |  |
 | RS-11 | CT-S11.04 | `VersoesEPonteiroTest#rs11_cts11_04_rollbackSemAnterior` | Bloqueado: comportamento indefinido (QT-15) | **DESABILITADO** | Bloqueado: QT-15, rollback sem versão anterior é proibido ou volta para sem modelo? |
 | RS-11 | CT-S11.05 | `VersoesEPonteiroTest#rs11_cts11_05_transicoesDeVersao` | Pronto (§6.4 lista só as transições permitidas) | **VERDE** | 25 execuções |
+| RS-11 | CT-S11.06 | `VersoesEPonteiroTest#rs11_cts11_06_acaoManualExigeResponsavel` (parametrizado: nulo, vazio, brancos) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
+| RS-11 | CT-S11.07 | `VersoesEPonteiroTest#rs11_cts11_07_versaoInexistente` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
+| RS-11 | CT-S11.08 | `PersistenciaDoTreinoIntegracaoTest#rs11_cts11_08_trocaManualPersistida` | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RS-12 | CT-S12.01 | `PersistenciaDoTreinoIntegracaoTest#rs12_cts12_01_versaoImutavel` | Pronto | **VERDE** |  |
 | RS-12 | CT-S12.02 | `PersistenciaDoTreinoIntegracaoTest#rs12_cts12_02_artefatoNaoSobrescrito` | Condicional (ADR-013) | **DESABILITADO** | Bloqueado: L-11, tecnologia do Armazenamento de Artefatos adiada (ADR-013) |
 | RS-13 | CT-S13.01 | `LeitorDoModeloAtivoTest#rs13_cts13_01_trocaAposCargaValida` | Condicional | **VERDE** |  |
@@ -947,3 +966,91 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RS-15 | CT-S15.01 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_01_batchLeitorSemAcessoAApp` | Condicional | **VERDE** |  |
 | RS-15 | CT-S15.02 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_02_batchLeitorLeEventos` | Condicional | **VERDE** |  |
 | RS-15 | CT-S15.03 | `PersistenciaDoTreinoIntegracaoTest#rs15_cts15_03_apiNaoEscreveEmMl` | Condicional | **VERDE** |  |
+
+
+> **Aula 07:** a matriz acima já inclui os 19 casos novos (situação "Novo (Aula 07)") e o CT-S09.04c. Total: **136 casos verdes**, 34 desabilitados (os mesmos de antes) e nenhum `@Disabled` novo.
+
+## 8. Cobertura com JaCoCo (Aula 07)
+
+> **Execução:** `./mvnw -B clean verify`, em 2026-11-13: **BUILD SUCCESS**, com 230 execuções, 0 falhas, 0 erros e 36 desabilitadas. O gate de cobertura passou ("All coverage checks have been met").
+
+### 8.1 Configuração
+
+| Item | Valor |
+|------|-------|
+| Plugin | `org.jacoco:jacoco-maven-plugin:0.8.15` no `pom.xml` |
+| `prepare-agent` | Instrumenta a suíte do Surefire. Não há `forkCount=0`, então o agente é carregado. |
+| `report` + `check` | Rodam na fase `verify`. Relatórios em `target/site/jacoco/`: `index.html`, `jacoco.xml` (usado pelo SonarCloud) e `jacoco.csv` |
+| Gate | Bundle inteiro: **LINE ≥ 0,80** e **BRANCH ≥ 0,70**. Abaixo disso, `verify` falha. |
+| CI | Step "Relatório de cobertura (JaCoCo)", com `if: always()`. O artifact `cobertura-jacoco-<run_id>` fica guardado 7 dias e existe também quando o gate reprova, porque o `report` roda antes do `check`. |
+
+### 8.2 Resultado
+
+| Medida | Antes (só JaCoCo ligado) | Depois dos testes de risco |
+|--------|--------------------------|----------------------------|
+| Linhas | 91,8% | **97,3%** (585/601) |
+| Branches | 80,3% | **90,1%** (200/222) |
+| Execuções de teste | 199 | 230 (+31, em 21 métodos novos) |
+| Casos verdes na matriz | 117 | 136 |
+
+O total já passava da meta antes dos testes novos. Os testes foram escritos porque havia **regra sem verificação**, e não para subir o percentual.
+
+### 8.3 Lacunas encontradas e classificação
+
+Leitura do `jacoco.xml` por classe, só das classes com regra de negócio. **Risco** = um defeito ali viola uma regra do inventário (§2). **Cosmética** = código defensivo, inalcançável pelo fluxo ou falha de infraestrutura sem regra. **Bloqueada** = o comportamento depende de uma pergunta em aberto, então testar fixaria uma decisão provisória.
+
+| Classe:linha | O que não era executado | Classe | Tratamento |
+|--------------|-------------------------|--------|------------|
+| ServicoDeSessao:164-165, 168, 173-174 | Token nulo, HMAC vazio, id ou versão ilegível | **Risco** (RN-06, E2) | CT-06.09 |
+| ServicoDeSessao:100 | Refresh antigo **forjado** (não pode revogar a sessão legítima) | **Risco** (RN-07) | CT-07.09 |
+| ServicoDeSessao:116 | `revogarTodas` ignorando sessões de outro usuário | **Risco** (RN-04) | CT-04.08 |
+| ServicoDeSessao:142, 149 | Revogação que perde a corrida otimista e repete | **Risco** (RN-09) | CT-09.06, CT-09.07 |
+| ServicoDeSessao:132-133 | Tolerância com `renovadaEm` ou dispositivo nulo | Cosmética (só existe anterior depois de uma renovação, que sempre grava `renovadaEm`) | — |
+| ServicoDeSessao:142 (`isEmpty`) | Sessão apagada durante a revogação | Cosmética (não existe exclusão de sessão) | — |
+| ServicoDeIdentidade:49-50 | `autenticar` com e-mail ou senha nulos | **Risco** (RN-05) | CT-05.06 |
+| ServicoDeIdentidade:72-73 | `redefinirSenha` sem código | **Risco** (RN-04) | CT-04.09 |
+| PoliticaDeAcesso:41, 47 | Principal nulo; dado sem dono | **Risco** (RN-17, RN-19) | CT-17.04, CT-19.04 |
+| ServicoDeConteudo:40-41 | Listagem com item **liberado** (só havia o caso "nega tudo") | **Risco** (RN-19) | CT-19.05 |
+| ServicoDeConteudo:23 | Matéria inexistente | Bloqueada (404 × 403 sem regra, QT-13) | — |
+| ServicoDeAssinatura:46 | Cancelar free, cancelar duas vezes, premium vencido | Bloqueada (CT-13.05, CT-13.06, QT-10) | — |
+| ServicoDeAssinatura:53 | `upgrade` | Bloqueada (Q-02, RN-12) | — |
+| ServicoDeAssinatura:32, 57 | Plano diferente de FREE/PREMIUM; início de vigência nulo | Cosmética (inalcançável / defensiva) | — |
+| OrquestradorDoJob:107-108 | Quarentena acima do limite **no Job** (só o validador era testado) | **Risco** (RS-07) | CT-S07.06 (trinca) |
+| OrquestradorDoJob:70, 73-78 | Descarte: responsável nulo ou vazio, data inexistente, execução não REPROVADA ou não mais recente | **Risco** (RS-09, ADR-011) | CT-S09.04c, CT-S09.06, CT-S09.07 |
+| OrquestradorDoJob:175-176 | Contador de reprovações zera numa aprovação | Bloqueada (QT-14, CT-S09.05) | — |
+| OrquestradorDoJob:147, 163 | `maxTentativas < 1`; candidato de execução não FALHOU | Cosmética (configuração inválida; estado só alcançável com queda no meio da execução) | — |
+| ValidadorDeDados:27 | Janela vazia | Bloqueada (volume mínimo, CT-S07.05) | — |
+| PromotorDeModelo:26-27, 30 | Ação manual sem responsável; versão inexistente | **Risco** (RS-11) | CT-S11.06, CT-S11.07 |
+| PromotorDeModelo:21 | Rollback sem versão anterior | Bloqueada (QT-15, CT-S11.04) | — |
+| TransicoesDeVersao:21; LeitorDoModeloAtivo:30-31 | Status nulo; recarga da mesma versão | Cosmética (defensiva; otimização sem efeito observável) | — |
+| RegistryDeModelosJdbc:85-89, 106, 119, 128, 139, 151-158 | **Nenhum caminho de sucesso** de `finalizar`, `atualizarStatusDaVersao`, `trocarPonteiro` e `versaoAnterior` rodava contra o PostgreSQL | **Risco** (RS-02, RS-10, RS-11) | CT-S02.06, CT-S10.04, CT-S11.08 |
+| GerenciadorDeLockPostgres:28-29, 52-63 | `liberar()` nunca executado; reentrância | **Risco** (RS-05) | CT-S05.04 |
+| GerenciadorDeLockPostgres:45-46, 58; RegistryDeModelosJdbc:213-214; Hashes:24-25, 53-54; ProvisionadorDeBanco:76-77 | `SQLException` ou algoritmo criptográfico indisponível | Cosmética (falha de infraestrutura, sem regra) | — |
+| FootFanaticsApplication:10-11 | `main` | Cosmética | — |
+
+**Técnicas usadas nos testes novos:**
+- Limites em trinca −1/0/+1 com `@ParameterizedTest` (CT-S07.06). As demais entradas equivalentes usam `@NullAndEmptySource`, `@ValueSource` e `@CsvSource`.
+- Tempo injetado como `java.time.Clock` (`Clock.fixed(T0, UTC)`, adaptado ao `Relogio` por `clock::instant`), sem `Thread.sleep`.
+- As corridas da revogação são **determinísticas**: um dublê de repositório executa a operação concorrente entre a leitura e a gravação otimista, sem threads.
+
+**Bordas que continuam fora:** a trinca de tempo do token (`TTL_acesso` −1 ms / 0 / +1 ms) já tem −1 e +1 verdes, mas o ponto 0 depende de AM-01 (CT-06.03, desabilitado). O mesmo vale para vigência, código de recuperação e `t_corte`.
+
+### 8.4 Defeitos encontrados pelos testes novos
+
+| ID | Onde | Defeito | Decisão |
+|----|------|---------|---------|
+| **D-01** | `RegistryDeModelosJdbc.ponteiro` (produção) | Com `versao_anterior_id` NULL (logo depois da 1ª promoção), `findFirst()` sobre um elemento `null` lançava `NullPointerException`. `versaoAnterior()` quebrava em vez de devolver vazio. | O prompt proibia mudar o comportamento de produção, então a decisão foi perguntada ao usuário. Escolha: **corrigir e registrar**. A correção é de uma linha (a coluna é lida como `Optional` antes do `findFirst`) e não muda nenhuma regra. Coberta por CT-S10.04. |
+| **D-02** | `PersistenciaDoTreinoIntegracaoTest.isolarDoTesteAnterior` (teste) | O `TRUNCATE ... CASCADE` do schema `ml` (§7.3) também esvaziava `checkpoint_treino`, que referencia `execucao_treino`. `watermark()` voltava `null`, e a asserção de checkpoint do CT-S10.02 comparava `null` com `null`, sem verificar nada. | Só a preparação mudou: a linha do job é recriada em `epoch`, como o provisionamento a deixa. Asserções, resultados esperados e `@Disabled` não mudaram. O CT-S10.02 passou a verificar o checkpoint de verdade e continua verde. |
+
+### 8.5 Divergência com o material da Aula 07 (não resolvida aqui)
+
+O cenário E2 da aula usa os motivos `TOKEN_AUSENTE` e `TOKEN_REVOGADO` e nega o token com **expiração ≤ agora**. A RN-06 (`docs/arquitetura.md:618`) só tem `token_expirado` e `token_invalido`, e o código aceita o token no instante exato da expiração (AM-01). Como o prompt proíbe mudar produção, os testes novos verificam a RN-06 como está. Alinhar a regra à aula exige decidir AM-01 e mudar a RN-06, e fica para a decisão do usuário.
+
+### 8.6 O gate barra a queda de cobertura
+
+| Execução | Comando | Resultado |
+|----------|---------|-----------|
+| Cobertura derrubada (só 1 classe de teste roda) | `./mvnw -B clean verify -Dtest=ContratoDeErroTest -Dsurefire.failIfNoSpecifiedTests=false` | **BUILD FAILURE**: "lines covered ratio is 0.03, but expected minimum is 0.80" e "branches covered ratio is 0.00, but expected minimum is 0.70" |
+| Restaurada (suíte inteira) | `./mvnw -B clean verify` | **BUILD SUCCESS**: "All coverage checks have been met", 97,3% / 90,1% |
+
+**Cuidado observado:** sem `clean`, o `prepare-agent` **acrescenta** dados ao `target/jacoco.exec` da execução anterior. A cobertura antiga mascarou a queda, e o build passou. O CI não sofre com isso porque sempre parte de um checkout limpo. Localmente, use `clean` para medir.

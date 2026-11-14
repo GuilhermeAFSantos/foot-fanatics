@@ -52,3 +52,14 @@ jobs:
             target/failsafe-reports/
           if-no-files-found: ignore
           retention-days: 7
+
+      # Relatório do JaCoCo (HTML para navegar, XML para o SonarCloud, CSV por classe). O goal report roda
+      # antes do check, então o relatório existe também quando o gate de cobertura (80/70) reprova o build.
+      - name: Relatório de cobertura (JaCoCo)
+        if: always()
+        uses: actions/upload-artifact@v5
+        with:
+          name: cobertura-jacoco-${{ github.run_id }}
+          path: target/site/jacoco/
+          if-no-files-found: ignore
+          retention-days: 7

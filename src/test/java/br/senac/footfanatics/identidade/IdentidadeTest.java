@@ -21,6 +21,7 @@ import br.senac.footfanatics.apoio.SessoesEmMemoria;
 import br.senac.footfanatics.apoio.UsuariosEmMemoria;
 import br.senac.footfanatics.erro.CodigoDeErro;
 import br.senac.footfanatics.erro.FalhaDeAcesso;
+import br.senac.footfanatics.sessao.CredenciaisInvalidasException;
 import br.senac.footfanatics.sessao.ConfiguracaoDeSessao;
 import br.senac.footfanatics.sessao.ParDeTokens;
 import br.senac.footfanatics.sessao.ServicoDeSessao;
@@ -34,6 +35,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.slf4j.LoggerFactory;
 
 /** E1 Identidade & Conta: RN-01 a RN-04 (docs/testes/plano-tdd.md §2). */
@@ -263,5 +266,47 @@ class IdentidadeTest {
     @Disabled("Bloqueado: QT-02, novo código invalida o anterior?")
     @DisplayName("RN-04 · CT-04.07 · dois códigos válidos em sequência")
     void rn04_ct04_07_doisCodigosEmSequencia() {
+    }
+
+    // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
+
+    @ParameterizedTest(name = "e-mail={0}, senha={1} → não autentica")
+    @CsvSource(nullValues = "NULO", value = {"NULO, senha-original-123", "bia@exemplo.test, NULO"})
+    @DisplayName("RN-05 · CT-05.06 · e-mail ou senha ausente não autentica nem cria sessão")
+    void rn05_ct05_06_credencialAusente(String email, String senha) {
+        UUID id = identidade.cadastrar(EMAIL, SENHA);
+
+        assertAll(
+                () -> assertTrue(identidade.autenticar(email, senha).isEmpty()),
+                () -> assertThrows(CredenciaisInvalidasException.class, () -> sessao.login(email, senha, "celular")),
+                () -> assertEquals(Optional.of(id), identidade.autenticar(EMAIL, SENHA)));
+    }
+
+    @Test
+    @DisplayName("RN-04 · CT-04.08 · a recuperação revoga só as sessões do titular, nunca as de outro usuário")
+    void rn04_ct04_08_recuperacaoRevogaSoDoTitular() {
+        identidade.cadastrar(EMAIL, SENHA);
+        UUID caio = identidade.cadastrar("caio@exemplo.test", "senha-do-caio");
+        ParDeTokens daBia = sessao.login(EMAIL, SENHA, "celular");
+        ParDeTokens doCaio = sessao.login("caio@exemplo.test", "senha-do-caio", "celular");
+        identidade.solicitarRecuperacao(EMAIL);
+
+        identidade.redefinirSenha(canal.ultimoCodigoPara(EMAIL), "senha-nova-456");
+
+        assertAll(
+                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO,
+                        assertThrows(FalhaDeAcesso.class, () -> sessao.validar(daBia.tokenDeAcesso())).codigo()),
+                () -> assertEquals(caio, sessao.validar(doCaio.tokenDeAcesso()).usuarioId()));
+    }
+
+    @Test
+    @DisplayName("RN-04 · CT-04.09 · redefinição sem código é rejeitada e não troca a senha")
+    void rn04_ct04_09_redefinicaoSemCodigo() {
+        UUID id = identidade.cadastrar(EMAIL, SENHA);
+
+        assertThrows(CodigoDeRecuperacaoInvalidoException.class, () -> identidade.redefinirSenha(null, "senha-nova-456"));
+        assertAll(
+                () -> assertEquals(Optional.of(id), identidade.autenticar(EMAIL, SENHA)),
+                () -> assertTrue(identidade.autenticar(EMAIL, "senha-nova-456").isEmpty()));
     }
 }

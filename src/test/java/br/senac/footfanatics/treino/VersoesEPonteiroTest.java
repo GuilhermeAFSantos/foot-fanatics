@@ -21,6 +21,8 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** RS-11: ponteiro, rollback e transições de §6.4 (docs/arquitetura.md:804, 809-820; ADR-010). */
 class VersoesEPonteiroTest {
@@ -102,5 +104,33 @@ class VersoesEPonteiroTest {
         } else {
             assertThrows(TransicaoProibidaException.class, () -> TransicoesDeVersao.exigirPermitida(de, para));
         }
+    }
+
+    // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
+
+    @ParameterizedTest(name = "responsável [{0}] → recusado")
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("RS-11 · CT-S11.06 · ação manual no ponteiro sem responsável identificado é recusada e nada muda")
+    void rs11_cts11_06_acaoManualExigeResponsavel(String responsavel) {
+        assertThrows(IllegalArgumentException.class, () -> promotor.apontarPara(anterior, responsavel));
+        assertAll(
+                () -> assertEquals(Optional.of(atual), registry.versaoAtiva()),
+                () -> assertEquals(Optional.of(anterior), registry.versaoAnterior()),
+                () -> assertEquals(StatusVersao.APROVADO_INATIVO, statusDe(anterior)),
+                () -> assertEquals(StatusVersao.ATIVO, statusDe(atual)));
+    }
+
+    @Test
+    @DisplayName("RS-11 · CT-S11.07 · ponteiro nunca aponta para versão inexistente")
+    void rs11_cts11_07_versaoInexistente() {
+        assertThrows(TransicaoProibidaException.class, () -> promotor.apontarPara(UUID.randomUUID(), "operadora.plantao"));
+        assertAll(
+                () -> assertEquals(Optional.of(atual), registry.versaoAtiva()),
+                () -> assertEquals(StatusVersao.ATIVO, statusDe(atual)));
+    }
+
+    private StatusVersao statusDe(UUID id) {
+        return registry.versoes().stream().filter(v -> v.id().equals(id)).findFirst().orElseThrow().status();
     }
 }

@@ -219,4 +219,22 @@ class AcessoAoConteudoTest {
     @DisplayName("RN-20 · (sem caso) · regras do domínio de conteúdo")
     void rn20_semCasoPossivel() {
     }
+
+    // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
+
+    @Test
+    @DisplayName("RN-19 · CT-19.05 · a listagem entrega ao premium o que a política libera e nunca o corpo exclusivo ao free")
+    void rn19_ct19_05_listagemRespeitaAPolitica() {
+        Materia publica = c.materia(Classificacao.PUBLICA);
+        Materia exclusiva = c.materia(Classificacao.EXCLUSIVA);
+
+        List<Materia> doPremium = c.servicoDeConteudo.listarMaterias(principal(Perfil.PREMIUM_VIGENTE));
+        List<Materia> doFree = c.servicoDeConteudo.listarMaterias(principal(Perfil.FREE));
+
+        // QT-12 (omitir × listar sem corpo) segue aberto: a asserção vale para as duas leituras.
+        assertAll(
+                () -> assertTrue(doPremium.containsAll(List.of(publica, exclusiva))),
+                () -> assertTrue(doFree.contains(publica)),
+                () -> assertTrue(doFree.stream().noneMatch(m -> exclusiva.corpo().equals(m.corpo()))));
+    }
 }
