@@ -25,6 +25,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
 
 /** Job de Treino Diário (docs/arquitetura.md §6.1–6.4; ADR-008 a ADR-012). */
 class OrquestradorDoJobTest {
@@ -414,5 +417,84 @@ class OrquestradorDoJobTest {
         c.orquestrador.executar(DIA);
 
         assertTrue(c.treinador.chamadas.get(0).dados().stream().allMatch(e -> e.registradoEm().isAfter(W0)));
+    }
+
+    // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
+
+    /**
+     * Janela de 10 eventos (1 do montar() + 9 aqui) e limite de quarentena 0,10: o limite é 1 evento.
+     * Trinca −1/0/+1 em torno dele. No limite exato vale a leitura literal de "acima" (AM-02, provisória,
+     * já usada em CT-S07.03c).
+     */
+    @ParameterizedTest(name = "quarentena = limite {0} → {1}")
+    @CsvSource({"-1, CONCLUIDA", "0, CONCLUIDA", "1, FALHOU"})
+    @DisplayName("RS-07 · CT-S07.06 · no Job, quarentena acima do limite → FALHOU sem treinar e sem mover o checkpoint")
+    void rs07_cts07_06_quarentenaNoJob(int deslocamento, Desfecho esperado) {
+        int emQuarentena = 1 + deslocamento;
+        for (int i = 0; i < 9; i++) {
+            int esquema = i < emQuarentena ? VERSAO_ESQUEMA_ATUAL + 1 : VERSAO_ESQUEMA_ATUAL;
+            c.eventos.gravar(c.evento(T0.minus(Duration.ofHours(3)).minus(Duration.ofMinutes(i)), esquema));
+        }
+
+        ResultadoDoJob r = c.orquestrador.executar(DIA);
+
+        boolean falhou = esperado == Desfecho.FALHOU;
+        assertAll(
+                () -> assertEquals(esperado, r.desfecho()),
+                () -> assertEquals(falhou ? W0 : CORTE, c.registry.watermark()),
+                () -> assertEquals(falhou ? 0 : 1, c.treinador.chamadas.size()),
+                () -> assertEquals(falhou ? Optional.of(ativa) : Optional.of(versaoDaExecucao(DIA).orElseThrow().id()),
+                        c.registry.versaoAtiva()));
+    }
+
+    @ParameterizedTest(name = "responsável [{0}] → descarte proibido")
+    @NullAndEmptySource
+    @DisplayName("RS-09 · CT-S09.04c · descarte com responsável nulo ou vazio é proibido")
+    void rs09_cts09_04c_descarteComResponsavelNuloOuVazio(String responsavel) {
+        avaliacaoPior();
+        c.orquestrador.executar(DIA);
+        diaSeguinte(1);
+        c.orquestrador.executar(DIA.plusDays(1));
+
+        assertThrows(DescarteNaoPermitidoException.class,
+                () -> c.orquestrador.descartarJanela(DIA.plusDays(1), responsavel));
+        assertEquals(W0, c.registry.watermark());
+    }
+
+    @Test
+    @DisplayName("RS-09 · CT-S09.06 · só a execução REPROVADA mais recente pode ser descartada")
+    void rs09_cts09_06_descarteSoDaMaisRecente() {
+        avaliacaoPior();
+        c.orquestrador.executar(DIA);
+        diaSeguinte(1);
+        c.orquestrador.executar(DIA.plusDays(1));
+
+        assertThrows(DescarteNaoPermitidoException.class,
+                () -> c.orquestrador.descartarJanela(DIA, "operadora.plantao"));
+        assertAll(
+                () -> assertEquals(W0, c.registry.watermark()),
+                () -> assertEquals(StatusExecucao.REPROVADA, c.registry.buscarExecucao(DIA).orElseThrow().status()));
+    }
+
+    @Test
+    @DisplayName("RS-09 · CT-S09.07a · descarte de data sem execução é proibido")
+    void rs09_cts09_07a_descarteDeExecucaoInexistente() {
+        assertThrows(DescarteNaoPermitidoException.class,
+                () -> c.orquestrador.descartarJanela(DIA, "operadora.plantao"));
+        assertAll(
+                () -> assertEquals(W0, c.registry.watermark()),
+                () -> assertTrue(c.registry.buscarExecucao(DIA).isEmpty()));
+    }
+
+    @Test
+    @DisplayName("RS-09 · CT-S09.07b · descarte de execução CONCLUIDA é proibido")
+    void rs09_cts09_07b_descarteDeExecucaoConcluida() {
+        c.orquestrador.executar(DIA);
+
+        assertThrows(DescarteNaoPermitidoException.class,
+                () -> c.orquestrador.descartarJanela(DIA, "operadora.plantao"));
+        assertAll(
+                () -> assertEquals(CORTE, c.registry.watermark()),
+                () -> assertEquals(StatusExecucao.CONCLUIDA, c.registry.buscarExecucao(DIA).orElseThrow().status()));
     }
 }

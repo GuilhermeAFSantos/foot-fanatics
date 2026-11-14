@@ -159,10 +159,11 @@ public class RegistryDeModelosJdbc implements RegistryDeModelos {
 
     // ------------------------------------------------------------------
 
+    /** Coluna NULL (ex.: sem versão anterior) → Optional.empty(). D-01: findFirst() sobre elemento null lançava NPE. */
     private Optional<UUID> ponteiro(String coluna) {
         return consultar("SELECT " + coluna + " FROM ml.ponteiro_modelo_ativo WHERE modelo = ?",
-                ps -> ps.setString(1, MODELO), rs -> rs.getObject(coluna, UUID.class))
-                .stream().findFirst().map(Optional::ofNullable).orElse(Optional.empty());
+                ps -> ps.setString(1, MODELO), rs -> Optional.ofNullable(rs.getObject(coluna, UUID.class)))
+                .stream().findFirst().flatMap(valor -> valor);
     }
 
     private static ExecucaoDeTreino execucao(ResultSet rs) throws SQLException {

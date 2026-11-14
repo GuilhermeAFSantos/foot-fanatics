@@ -1,5 +1,6 @@
 package br.senac.footfanatics.sessao;
 
+import static br.senac.footfanatics.apoio.ValoresDeTeste.T0;
 import static br.senac.footfanatics.apoio.ValoresDeTeste.TOLERANCIA_REUSO;
 import static br.senac.footfanatics.apoio.ValoresDeTeste.TTL_ACESSO;
 import static br.senac.footfanatics.apoio.ValoresDeTeste.TTL_REFRESH;
@@ -13,8 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import br.senac.footfanatics.apoio.CenarioDeAcesso;
+import br.senac.footfanatics.apoio.SessoesEmMemoria;
 import br.senac.footfanatics.erro.CodigoDeErro;
 import br.senac.footfanatics.erro.FalhaDeAcesso;
+import java.time.Clock;
+import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
@@ -25,10 +29,14 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 /** E2 Sessão & Acesso: RN-05 a RN-09 (ADR-004, Proposta: casos condicionais). */
 class SessaoTest {
@@ -378,5 +386,103 @@ class SessaoTest {
         c.relogio.avancar(TOLERANCIA_REUSO.multipliedBy(2));
 
         assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
+    }
+
+    // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
+
+    /** Sessão cujo id aparece nos tokens forjados abaixo; partes ilegíveis nunca chegam ao repositório. */
+    private static final String UUID_QUALQUER = "0f8fad5b-d9cb-469f-a165-70867728950e";
+
+    @ParameterizedTest(name = "token [{0}] → token_invalido")
+    @NullAndEmptySource
+    @ValueSource(strings = {
+            UUID_QUALQUER + ".1.",          // assinatura (HMAC) vazia
+            "nao-e-uuid.1.assinatura",      // id da sessão ilegível
+            UUID_QUALQUER + ".x.assinatura" // versão não numérica
+    })
+    @DisplayName("RN-06 · CT-06.09 · token ausente, vazio ou com partes ilegíveis é negado como token_invalido")
+    void rn06_ct06_09_tokenAusenteOuIlegivel(String token) {
+        sessao.login(EMAIL, SENHA, "celular");
+
+        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(token)));
+    }
+
+    @Test
+    @DisplayName("RN-07 · CT-07.09 · refresh forjado com versão antiga é rejeitado e NÃO revoga a sessão legítima")
+    void rn07_ct07_09_refreshForjadoNaoRevoga() {
+        ParDeTokens p0 = sessao.login(EMAIL, SENHA, "celular");
+        UUID id = c.sessoes.listarTodas().get(0).id();
+        String forjadoAntesDaRotacao = id + ".0.forjado";
+
+        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.renovar(forjadoAntesDaRotacao, "celular")));
+        ParDeTokens p1 = sessao.renovar(p0.refreshToken(), "celular");
+        c.relogio.avancar(TOLERANCIA_REUSO.plus(UM_MS));
+        String forjadoAposARotacao = id + ".0.outro-forjado";
+
+        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.renovar(forjadoAposARotacao, "celular")));
+        assertAll(
+                () -> assertEquals(usuario, sessao.validar(p1.tokenDeAcesso()).usuarioId()),
+                () -> assertNotNull(sessao.renovar(p1.refreshToken(), "celular")),
+                () -> assertTrue(c.sessoes.listarTodas().stream().allMatch(s -> s.revogadaEm() == null)));
+    }
+
+    /**
+     * Repositório que deixa outra operação "passar na frente" uma única vez, entre a leitura e a gravação
+     * otimista. Simula a corrida de forma determinística, sem threads nem espera.
+     */
+    private static final class SessoesComInterferencia extends SessoesEmMemoria {
+        private Runnable interferencia;
+
+        @Override
+        public boolean substituirSeVersao(Sessao nova, int versaoEsperada) {
+            Runnable antes = interferencia;
+            interferencia = null;
+            if (antes != null) {
+                antes.run();
+            }
+            return super.substituirSeVersao(nova, versaoEsperada);
+        }
+    }
+
+    @Test
+    @DisplayName("RN-09 · CT-09.06 · logout concorrente com renovação: a revogação não se perde")
+    void rn09_ct09_06_logoutConcorrenteComRenovacao() {
+        Clock clock = Clock.fixed(T0, ZoneOffset.UTC);
+        SessoesComInterferencia repositorio = new SessoesComInterferencia();
+        ServicoDeSessao servico = new ServicoDeSessao(c.autenticador, repositorio, clock::instant,
+                new ConfiguracaoDeSessao(TTL_ACESSO, TTL_REFRESH, TOLERANCIA_REUSO));
+        ParDeTokens p0 = servico.login(EMAIL, SENHA, "celular");
+        AtomicReference<ParDeTokens> renovadoNaCorrida = new AtomicReference<>();
+        repositorio.interferencia = () -> renovadoNaCorrida.set(servico.renovar(p0.refreshToken(), "celular"));
+
+        servico.logout(p0.tokenDeAcesso());
+
+        assertAll(
+                () -> assertNotNull(renovadoNaCorrida.get()),
+                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO,
+                        codigoDaFalha(() -> servico.validar(renovadoNaCorrida.get().tokenDeAcesso()))),
+                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO,
+                        codigoDaFalha(() -> servico.renovar(renovadoNaCorrida.get().refreshToken(), "celular"))),
+                () -> assertNotNull(repositorio.listarTodas().get(0).revogadaEm()));
+    }
+
+    @Test
+    @DisplayName("RN-09 · CT-09.07 · logout concorrente com outra revogação: revoga uma única vez")
+    void rn09_ct09_07_logoutConcorrenteComRevogacao() {
+        Clock clock = Clock.fixed(T0, ZoneOffset.UTC);
+        SessoesComInterferencia repositorio = new SessoesComInterferencia();
+        ServicoDeSessao servico = new ServicoDeSessao(c.autenticador, repositorio, clock::instant,
+                new ConfiguracaoDeSessao(TTL_ACESSO, TTL_REFRESH, TOLERANCIA_REUSO));
+        ParDeTokens p0 = servico.login(EMAIL, SENHA, "celular");
+        int versaoAntes = repositorio.listarTodas().get(0).versao();
+        repositorio.interferencia = () -> servico.revogarTodas(usuario);
+
+        servico.logout(p0.tokenDeAcesso());
+
+        Sessao depois = repositorio.listarTodas().get(0);
+        assertAll(
+                () -> assertEquals(T0, depois.revogadaEm()),
+                () -> assertEquals(versaoAntes + 1, depois.versao()),
+                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> servico.validar(p0.tokenDeAcesso()))));
     }
 }
