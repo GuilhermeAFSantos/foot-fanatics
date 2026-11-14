@@ -63,11 +63,15 @@ O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo *
 
 - JDK 21 (Temurin) com cache do Maven, em `ubuntu-24.04`, com timeout de 20 minutos.
 - O mesmo `./mvnw -B verify` usado localmente, incluindo os testes com Testcontainers. Nenhum teste é pulado.
-- `permissions: contents: read`. Sem segredos, sem `continue-on-error`, sem `pull_request_target`.
+- **Cobertura (JaCoCo 0.8.15):** o `verify` falha abaixo de 80% de linhas ou 70% de branches. O relatório (`target/site/jacoco/`) é publicado como artifact `cobertura-jacoco-<run_id>`.
+- **Análise estática (SonarCloud):** depois do `verify`, o plugin Maven analisa o projeto [`GuilhermeAFSantos_foot-fanatics`](https://sonarcloud.io/project/overview?id=GuilhermeAFSantos_foot-fanatics) lendo o XML do JaCoCo e espera o Quality Gate (`sonar.qualitygate.wait=true`). Gate reprovado = check vermelho.
+- `permissions: contents: read`, sem `continue-on-error` e sem `pull_request_target`. O único secret é `SONAR_TOKEN`, usado só no step do SonarCloud e mascarado nos logs. PRs de fork não recebem o secret e pulam esse step.
 - Execuções obsoletas do mesmo PR ou branch são canceladas (`concurrency`).
 - Os relatórios do Surefire e do Failsafe são publicados como artifact em toda execução (`if: always()`), com retenção de 7 dias.
 
-**Proteção da `main`:** só aceita alterações com o check `verify (Java 21)` verde e a branch atualizada em relação à `main`. A regra vale também para administradores, e force push e exclusão da branch estão bloqueados.
+Para medir a cobertura localmente, use `./mvnw -B clean verify`: sem `clean`, o JaCoCo soma os dados da execução anterior.
+
+**Proteção da `main`:** só aceita alterações com os checks **`verify (Java 21)`** e **`SonarCloud Code Analysis`** verdes e a branch atualizada em relação à `main`. Exigir o check do SonarCloud garante o Quality Gate também em PRs de fork, onde o step do CI é pulado. A regra vale também para administradores, e force push e exclusão da branch estão bloqueados.
 
 ### Validação do pipeline (PR #1, 2026-11-13)
 

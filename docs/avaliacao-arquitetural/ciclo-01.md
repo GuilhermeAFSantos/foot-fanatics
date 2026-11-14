@@ -418,6 +418,11 @@ Ações novas que surgiram da revisão:
 | **AP-12** | Meta de cobertura **por classe** para as classes críticas (sessão, política, registry), além da meta global | SE-07 | AC-04, AC-10, AC-14 | dev (critério a combinar com o professor) |
 | **AP-13** | Atualizar `actions/upload-artifact` para uma versão que rode no Node 24 (o run `43543654598` avisou do Node 20 obsoleto) | RC-09 (reprodutibilidade do CI) | AC-14 | DevOps |
 
+**Situação das ações novas (2026-11-14):**
+- ✅ **AP-11 atendida.** A proteção da `main` passou a exigir `verify (Java 21)` **e** `SonarCloud Code Analysis` (API `branches/main/protection/required_status_checks`). Com isso, RC-11 passa a **não risco**: um PR de fork sem análise não tem o check do SonarCloud e fica bloqueado.
+- ✅ **AP-13 atendida.** `actions/upload-artifact@v6` (runtime `node24`) nos dois steps de artifact do `ci.yml`.
+- ⬜ **AP-12 não atendida.** O critério por classe depende de combinar com o professor.
+
 ---
 
 ## 8. Limitações deste ciclo
