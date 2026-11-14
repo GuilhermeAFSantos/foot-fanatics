@@ -31,6 +31,9 @@ class ContratoDeErroTest {
                 Arguments.of(CodigoDeErro.TOKEN_INVALIDO, 401),
                 Arguments.of(CodigoDeErro.TOKEN_AUSENTE, 401),   // Aula 07, cenário E2
                 Arguments.of(CodigoDeErro.TOKEN_REVOGADO, 401),  // Aula 07, cenário E2
+                Arguments.of(CodigoDeErro.JOGO_NAO_ENCONTRADO, 404),        // Aula 08, INT-02
+                Arguments.of(CodigoDeErro.INTEGRACAO_INDISPONIVEL, 503),    // Aula 08, INT-03/INT-04
+                Arguments.of(CodigoDeErro.RESPOSTA_EXTERNA_INVALIDA, 502),  // Aula 08, INT-05 (status provisório)
                 Arguments.of(CodigoDeErro.PLANO_INSUFICIENTE, 403),
                 Arguments.of(CodigoDeErro.ACESSO_NEGADO, 403));
     }

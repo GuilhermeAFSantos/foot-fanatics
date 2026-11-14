@@ -57,6 +57,30 @@ Com o Docker em execução:
 
 Os relatórios ficam em `target/surefire-reports/`.
 
+## Integração com o provedor de esportes
+
+O Foot Fanatics busca jogos num provedor externo pela porta `SportsProvider`. O adapter HTTP é `esportes/http/SportsProviderHttp`. A rastreabilidade (requisito → risco → teste → execução) está em [`docs/testes/plano-tdd.md` §10](docs/testes/plano-tdd.md).
+
+**Rodar os testes da integração localmente** (não precisam de rede, Docker nem credencial):
+
+```bash
+./mvnw -B test -Dtest=SportsProviderHttpTest     # Windows: mvnw.cmd -B test -Dtest=SportsProviderHttpTest
+```
+
+- O [WireMock](https://wiremock.org/) sobe um servidor HTTP em `127.0.0.1`, numa porta aleatória, dentro do próprio teste. O cliente usa a rede de verdade, mas a resposta está sob controle do teste. O WireMock só existe no escopo de teste e não entra no artefato de produção.
+- Cenários cobertos: 200 válido (INT-01), 404 (INT-02), 5xx e provedor fora do ar (INT-03), timeout (INT-04), corpo inválido (INT-05), 4xx não repetido (INT-06) e token do provedor que não pode vazar (INT-07).
+- Os mesmos testes rodam no `./mvnw -B verify` e no CI.
+- O teste de timeout espera ~1,5 s de propósito. A classe inteira leva cerca de 5 s.
+
+**Configuração em execução real**, sempre por variável de ambiente e nunca no Git:
+
+| Variável | Propriedade | Exemplo |
+|----------|-------------|---------|
+| `SPORTS_PROVIDER_URL` | `sports.provider.base-url` | URL base do provedor |
+| `SPORTS_PROVIDER_TOKEN` | `sports.provider.token` | chave de API (vai no header `X-Api-Key`) |
+
+Os timeouts (500 ms de conexão, 1.500 ms de leitura) e o limite de 64 KiB da resposta estão em `src/main/resources/application.properties`. O log de cada chamada registra só a correlação, o status e a duração, nunca o token, os headers ou o corpo.
+
 ## Integração contínua
 
 O workflow [`.github/workflows/ci.yml`](.github/workflows/ci.yml) roda em todo **pull request** e em **push na `main`**:
