@@ -1146,7 +1146,7 @@ Riscos da integração (novos, prefixo RK-INT):
 
 | Requisito (origem) | Risco | Teste (classe#método) | Asserções principais | Execução |
 |--------------------|-------|-----------------------|----------------------|----------|
-| **INT-01:** 200 válido → mapear o modelo interno (lab) | RK-INT-02 | `SportsProviderHttpTest#int01_partidaConcluidaMapeadaComRequestNoContrato`; `#int01_statusDoProvedorMapeado` (×3 status) | Objeto mapeado igual ao esperado **e** request com `X-Api-Key`, `X-Correlation-Id` e `Accept` (`verify` do WireMock) | ✅ local · CI: ver §10.4 |
+| **INT-01:** 200 válido → mapear o modelo interno (lab) | RK-INT-02 | `SportsProviderHttpTest#int01_partidaConcluidaMapeadaComRequestNoContrato`; `#int01_statusDoProvedorMapeado` (×3 status) | Objeto mapeado igual ao esperado **e** request com `X-Api-Key`, `X-Correlation-Id` e `Accept` (`verify` do WireMock) | ✅ local e CI (run 43547900481, §10.4) |
 | **INT-02:** 404 → 404 próprio (lab) | RK-INT-04 | `#int02_jogoInexistenteVira404Proprio` | Motivo `NAO_ENCONTRADO`; Problem Details 404 `jogo_nao_encontrado`; corpo do provedor ausente; nada persistido | ✅ |
 | **INT-03:** 500 → 503 controlado (lab) | RK-INT-01, RK-INT-04 | `#int03_erroDoProvedorVira503Controlado` (500, 502, 503); `#int03_provedorForaDoArVira503` (conexão recusada) | Motivo `INDISPONIVEL`; 503 `integracao_indisponivel`; **uma única** chamada; nada persistido | ✅ |
 | **INT-04:** resposta lenta → interromper e não persistir (lab) | RK-INT-01, RK-INT-02 | `#int04_timeoutInterrompeENaoPersiste` | Motivo `INDISPONIVEL`; nada persistido; o cliente desiste antes do atraso de 5 s (read-timeout de 1,5 s, tolerância larga) | ✅ |
@@ -1167,7 +1167,12 @@ Riscos da integração (novos, prefixo RK-INT):
 
 ### 10.4 Execução no CI
 
-Preenchida depois do run do pull request (ver o histórico do PR desta seção).
+| Run | Evento | Resultado | Evidência |
+|-----|--------|-----------|-----------|
+| [43547900481](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43547900481) | PR #8, commit `5d6f17c` | ✅ `verify (Java 21)` | `SportsProviderHttpTest`: 27 execuções, 0 falhas, 4,6 s; suíte: 265 execuções, 0 falhas, 34 desabilitadas. `token-de-teste` aparece **0 vezes** no log do run. Artifacts `relatorios-de-teste-43547900481` e `cobertura-jacoco-43547900481` |
+| SonarCloud, PR #8 | Análise do código novo | ✅ Quality Gate **Passed** | Cobertura do código novo 91,2%, duplicação 0%, 0 issues, 0 hotspots |
+
+Os resultados ✅ da coluna "Execução" da §10.2 valem para a execução local e para este run.
 
 ### 10.5 Decisões provisórias e pendências
 
