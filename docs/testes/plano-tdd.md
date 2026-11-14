@@ -811,7 +811,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-04 | CT-04.01 | `IdentidadeTest#rn04_ct04_01_recuperaERevogaSessoes` | Condicional | **VERDE** |  |
 | RN-04 | CT-04.02 | `IdentidadeTest#rn04_ct04_02_respostaIdenticaParaEmailInexistente` | Condicional | **VERDE** |  |
 | RN-04 | CT-04.03 | `IdentidadeTest#rn04_ct04_03_codigoDeUsoUnico` | Condicional | **VERDE** |  |
-| RN-04 | CT-04.04 | `IdentidadeTest#rn04_ct04_04a_codigoAceitoAntesDaValidade`<br>`IdentidadeTest#rn04_ct04_04b_codigoRejeitadoAposValidade`<br>`IdentidadeTest#rn04_ct04_04c_codigoNaBordaDaValidade` | Bloqueado: `T_rec` (L-05) | **VERDE** | 3 execuções |
+| RN-04 | CT-04.04 | `IdentidadeTest#rn04_ct04_04a_codigoAceitoAntesDaValidade`<br>`IdentidadeTest#rn04_ct04_04b_codigoRejeitadoAposValidade`<br>`IdentidadeTest#rn04_ct04_04c_codigoNaBordaDaValidade` | Bloqueado: `T_rec` (L-05) | **VERDE** (04a, 04b) · **DESABILITADO** (04c) | 04a e 04b passam (−1 ms e +1 ms, relativos ao parâmetro); 04c, o instante exato, está bloqueado (AM-01). **Corrigido na Aula 08:** a linha dizia só VERDE e "3 execuções" |
 | RN-04 | CT-04.05 | `IdentidadeTest#rn04_ct04_05_codigoAdulteradoNaoRevoga` | Condicional | **VERDE** |  |
 | RN-04 | CT-04.06 | `IdentidadeTest#rn04_ct04_06_codigoGuardadoSoComoHash` | Condicional | **VERDE** |  |
 | RN-04 | CT-04.07 | `IdentidadeTest#rn04_ct04_07_doisCodigosEmSequencia` | Bloqueado: não se sabe se o novo invalida o anterior (QT-02) | **DESABILITADO** | Bloqueado: QT-02, novo código invalida o anterior? |
@@ -931,10 +931,10 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RS-06 | CT-S06.04 | `OrquestradorDoJobTest#rs06_cts06_04_erroDeDadosSemRetry` | Pronto | **VERDE** |  |
 | RS-07 | CT-S07.01 | `ValidadorDeDadosTest#rs07_cts07_01_esquemasNeNMenos1` | Condicional | **VERDE** |  |
 | RS-07 | CT-S07.02 | `ValidadorDeDadosTest#rs07_cts07_02_esquemaDesconhecidoEmQuarentena` | Condicional | **VERDE** |  |
-| RS-07 | CT-S07.03 | `ValidadorDeDadosTest#rs07_cts07_03c_igualAoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03b_acimaDoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03a_abaixoDoLimite` | Bloqueado: `L_quar` | **VERDE** | 3 execuções |
+| RS-07 | CT-S07.03 | `ValidadorDeDadosTest#rs07_cts07_03c_igualAoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03b_acimaDoLimite`<br>`ValidadorDeDadosTest#rs07_cts07_03a_abaixoDoLimite` | Bloqueado: `L_quar` | **VERDE** (03a, 03b) · **DESABILITADO** (03c) | 03a e 03b passam; 03c, a taxa exatamente igual ao limite, está bloqueado (AM-02). **Corrigido na Aula 08:** a linha dizia só VERDE e "3 execuções" |
 | RS-07 | CT-S07.04 | `OrquestradorDoJobTest#rs07_cts07_04_treinoSemEsquemaDesconhecido` | Condicional | **VERDE** |  |
 | RS-07 | CT-S07.05 | `ValidadorDeDadosTest#rs07_cts07_05_volumeMinimo` | Bloqueado: volume mínimo indefinido | **DESABILITADO** | Bloqueado: volume mínimo da janela não definido (§6.3 item 8) |
-| RS-07 | CT-S07.06 | `OrquestradorDoJobTest#rs07_cts07_06_quarentenaNoJob` (trinca −1/0/+1) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | no limite exato segue AM-02 (provisório, como CT-S07.03c) |
+| RS-07 | CT-S07.06 | `OrquestradorDoJobTest#rs07_cts07_06_quarentenaNoJob` (−1 e +1 em torno do limite) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | o ponto 0 (igual ao limite) saiu do teste na Aula 08: é AM-02, bloqueado como o CT-S07.03c (§8.7) |
 | RS-08 | CT-S08.01 | `GateDePromocaoTest#rs08_cts08_01_candidatoMelhorAprova` | Bloqueado (métrica, Q-09) | **VERDE** |  |
 | RS-08 | CT-S08.02 | `GateDePromocaoTest#rs08_cts08_02_exatamenteNaToleranciaAprova` | Bloqueado (`tol_gate`) | **VERDE** |  |
 | RS-08 | CT-S08.03 | `GateDePromocaoTest#rs08_cts08_03_abaixoDaToleranciaReprova` | Bloqueado | **VERDE** |  |
@@ -1001,7 +1001,7 @@ O total já passava da meta antes dos testes novos. Os testes foram escritos por
 
 ### 8.3 Lacunas encontradas e classificação
 
-Leitura do `jacoco.xml` por classe, só das classes com regra de negócio. **Risco** = um defeito ali viola uma regra do inventário (§2). **Cosmética** = código defensivo, inalcançável pelo fluxo ou falha de infraestrutura sem regra. **Bloqueada** = o comportamento depende de uma pergunta em aberto, então testar fixaria uma decisão provisória.
+Leitura do `jacoco.xml` por classe, só das classes com regra de negócio. **Risco** = um defeito ali viola uma regra do inventário (§1). **Cosmética** = código defensivo, inalcançável pelo fluxo ou falha de infraestrutura sem regra. **Bloqueada** = o comportamento depende de uma pergunta em aberto, então testar fixaria uma decisão provisória.
 
 | Classe:linha | O que não era executado | Classe | Tratamento |
 |--------------|-------------------------|--------|------------|
@@ -1019,7 +1019,7 @@ Leitura do `jacoco.xml` por classe, só das classes com regra de negócio. **Ris
 | ServicoDeAssinatura:46 | Cancelar free, cancelar duas vezes, premium vencido | Bloqueada (CT-13.05, CT-13.06, QT-10) | — |
 | ServicoDeAssinatura:53 | `upgrade` | Bloqueada (Q-02, RN-12) | — |
 | ServicoDeAssinatura:32, 57 | Plano diferente de FREE/PREMIUM; início de vigência nulo | Cosmética (inalcançável / defensiva) | — |
-| OrquestradorDoJob:107-108 | Quarentena acima do limite **no Job** (só o validador era testado) | **Risco** (RS-07) | CT-S07.06 (trinca) |
+| OrquestradorDoJob:107-108 | Quarentena acima do limite **no Job** (só o validador era testado) | **Risco** (RS-07) | CT-S07.06 (−1 e +1; a borda é AM-02) |
 | OrquestradorDoJob:70, 73-78 | Descarte: responsável nulo ou vazio, data inexistente, execução não REPROVADA ou não mais recente | **Risco** (RS-09, ADR-011) | CT-S09.04c, CT-S09.06, CT-S09.07 |
 | OrquestradorDoJob:175-176 | Contador de reprovações zera numa aprovação | Bloqueada (QT-14, CT-S09.05) | — |
 | OrquestradorDoJob:147, 163 | `maxTentativas < 1`; candidato de execução não FALHOU | Cosmética (configuração inválida; estado só alcançável com queda no meio da execução) | — |
@@ -1033,7 +1033,7 @@ Leitura do `jacoco.xml` por classe, só das classes com regra de negócio. **Ris
 | FootFanaticsApplication:10-11 | `main` | Cosmética | — |
 
 **Técnicas usadas nos testes novos:**
-- Limites em trinca −1/0/+1 com `@ParameterizedTest` (CT-S07.06). As demais entradas equivalentes usam `@NullAndEmptySource`, `@ValueSource` e `@CsvSource`.
+- Limites com `@ParameterizedTest` (CT-S07.06: −1 e +1; o ponto 0 é a ambiguidade AM-02 e ficou fora, ver §8.7). A trinca completa −1/0/+1 só existe onde a borda está definida: no token de acesso, depois da §9 (CT-06.02, 06.03, 06.04). As demais entradas equivalentes usam `@NullAndEmptySource`, `@ValueSource` e `@CsvSource`.
 - Tempo injetado como `java.time.Clock` (`Clock.fixed(T0, UTC)`, adaptado ao `Relogio` por `clock::instant`), sem `Thread.sleep`.
 - As corridas da revogação são **determinísticas**: um dublê de repositório executa a operação concorrente entre a leitura e a gravação otimista, sem threads.
 
@@ -1059,6 +1059,18 @@ O cenário E2 da aula usa os motivos `TOKEN_AUSENTE` e `TOKEN_REVOGADO` e nega o
 
 **Cuidado observado:** sem `clean`, o `prepare-agent` **acrescenta** dados ao `target/jacoco.exec` da execução anterior. A cobertura antiga mascarou a queda, e o build passou. O CI não sofre com isso porque sempre parte de um checkout limpo. Localmente, use `clean` para medir.
 
+
+### 8.7 Correção feita na Aula 08: a borda AM-02 tinha entrado num teste
+
+Ao consolidar a RTM (`docs/rtm.md`), o status de cada linha da §7.5 foi conferido automaticamente com os relatórios do Surefire. Apareceram três problemas:
+
+| Item | Problema | Correção |
+|------|----------|----------|
+| CT-04.04 e CT-S07.03 (§7.5) | A linha dizia **VERDE** e "3 execuções", mas o método do instante exato (04c, 03c) é `@Disabled` (AM-01, AM-02) | Status por método: VERDE nos dois que rodam, DESABILITADO no da borda |
+| CT-S07.06 (Aula 07) | A linha `0` da trinca afirmava que uma taxa **igual** ao limite aprova. O plano justificava isso com "como CT-S07.03c", que na verdade está desabilitado. O teste fixava uma decisão provisória (contra a regra "bloqueada = não testar" da §8.3 e contra a §7.4) | Por decisão do usuário, a linha `0` saiu do teste, que fica com −1 (CONCLUIDA) e +1 (FALHOU). A borda volta a ser só AM-02 em aberto. A produção não mudou |
+| §8.3 e §9.2 | Citavam o inventário como "§2"; o inventário é a §1 | Referências corrigidas |
+
+**Efeito:** `OrquestradorDoJobTest` passa de 3 para 2 execuções no CT-S07.06; a suíte vai de 265 para 264 execuções. Nenhuma asserção de regra definida foi removida.
 
 ## 9. Regra E2 alinhada ao cenário de qualidade da Aula 07
 
@@ -1088,7 +1100,7 @@ O cenário E2 da aula usa os motivos `TOKEN_AUSENTE` e `TOKEN_REVOGADO` e nega o
 | `erro/TratadorDeErros` | os dois novos → 401 |
 | `sessao/ServicoDeSessao.validar` | ordem ausente → inválido → expirado (`!agora.isBefore(expiraEm)`) → revogado |
 | `docs/arquitetura.md` | §4.2 (linha "Requisição") e ADR-014 |
-| §2, §3, AM-01, QT-04, §7.4, §7.5 | atualizados neste plano |
+| §1 (inventário), §2 (casos), AM-01, QT-04, §7.4, §7.5 | atualizados neste plano |
 
 ### 9.3 Testes cujo resultado esperado mudou (com autorização do usuário)
 

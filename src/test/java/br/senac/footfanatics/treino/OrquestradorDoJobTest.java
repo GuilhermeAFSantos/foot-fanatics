@@ -423,11 +423,11 @@ class OrquestradorDoJobTest {
 
     /**
      * Janela de 10 eventos (1 do montar() + 9 aqui) e limite de quarentena 0,10: o limite é 1 evento.
-     * Trinca −1/0/+1 em torno dele. No limite exato vale a leitura literal de "acima" (AM-02, provisória,
-     * já usada em CT-S07.03c).
+     * Testa −1 e +1 em torno dele. O ponto 0 (taxa exatamente igual ao limite) NÃO é testado: é a ambiguidade
+     * AM-02, bloqueada também no validador (CT-S07.03c, @Disabled). Testá-lo fixaria uma decisão provisória.
      */
     @ParameterizedTest(name = "quarentena = limite {0} → {1}")
-    @CsvSource({"-1, CONCLUIDA", "0, CONCLUIDA", "1, FALHOU"})
+    @CsvSource({"-1, CONCLUIDA", "1, FALHOU"})
     @DisplayName("RS-07 · CT-S07.06 · no Job, quarentena acima do limite → FALHOU sem treinar e sem mover o checkpoint")
     void rs07_cts07_06_quarentenaNoJob(int deslocamento, Desfecho esperado) {
         int emQuarentena = 1 + deslocamento;
