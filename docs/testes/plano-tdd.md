@@ -1116,3 +1116,72 @@ Todas as mudanças trocam `token_invalido` por um código **mais específico**, 
 **Cobertura:** em `ServicoDeSessao` ficaram 2 linhas sem cobertura:
 - o logout com token de sessão já revogada, bloqueado por QT-05 (CT-09.04);
 - o teste de nulo em `ler()`, que ficou defensivo, porque o token ausente agora é tratado antes.
+
+
+## 10. Integração com o provedor de esportes: SportsProvider + WireMock (Aula 08)
+
+> **Origem:** laboratório "Foot Fanatics" do material da Aula 08 (matriz INT-01 a INT-05; §5 "Cenários de degradação" e §6 "Segurança da chamada"). O provedor externo **não existe** em `docs/arquitetura.md`; ele entra aqui como requisito da disciplina e precisa de um ADR (ver §10.5).
+> **Execução local:** `./mvnw -B clean verify`, em 2026-11-14: **BUILD SUCCESS**, 265 execuções, 0 falhas e 34 desabilitadas; cobertura de 96,6% das linhas e 88,6% dos branches. Só a classe do laboratório: `./mvnw -B test -Dtest=SportsProviderHttpTest` (27 execuções, ~5 s), repetida 3 vezes com o mesmo resultado.
+
+### 10.1 O que foi construído
+
+| Peça | Papel |
+|------|-------|
+| `esportes/SportsProvider` | **Porta**: `JogoExterno buscarJogo(long idExterno)`. Devolve o jogo validado ou lança `FalhaNaIntegracaoException` |
+| `esportes/http/SportsProviderHttp` | **Adapter HTTP** (`java.net.http.HttpClient`, HTTP/1.1, sem redirecionamento): `GET {base}/matches/{id}` com `X-Api-Key` e `X-Correlation-Id` |
+| `esportes/http/ConfiguracaoSportsProvider` | URL, token, timeouts e limite de tamanho vindos do ambiente (`SPORTS_PROVIDER_URL`, `SPORTS_PROVIDER_TOKEN`); `toString()` mascara o token |
+| `esportes/ServicoDeJogos` | Só persiste **depois** de receber um jogo válido |
+| `erro/TratadorDeErros` | Traduz a falha para Problem Details próprio, com `codigo` e `correlacao`, sem nada do provedor |
+
+**Contrato declarado do provedor (hipótese nossa; o dublê prova a reação a ele, não o comportamento real do terceiro):** resposta 200 `application/json` com `{"id": inteiro, "status": "SCHEDULED"|"IN_PLAY"|"FINISHED", "home": inteiro ≥ 0, "away": inteiro ≥ 0}`.
+
+### 10.2 Matriz de rastreabilidade (RTM): requisito → risco → teste → execução
+
+Riscos da integração (novos, prefixo RK-INT):
+- **RK-INT-01:** provedor lento ou fora do ar trava ou derruba o Foot Fanatics.
+- **RK-INT-02:** dado externo inválido é gravado e corrompe o estado.
+- **RK-INT-03:** credencial do provedor vaza (código, log, resposta).
+- **RK-INT-04:** erro ou conteúdo do provedor é exposto ao usuário.
+- **RK-INT-05:** repetir uma chamada condenada (4xx) agrava o problema (bloqueio por cota, credencial).
+
+| Requisito (origem) | Risco | Teste (classe#método) | Asserções principais | Execução |
+|--------------------|-------|-----------------------|----------------------|----------|
+| **INT-01:** 200 válido → mapear o modelo interno (lab) | RK-INT-02 | `SportsProviderHttpTest#int01_partidaConcluidaMapeadaComRequestNoContrato`; `#int01_statusDoProvedorMapeado` (×3 status) | Objeto mapeado igual ao esperado **e** request com `X-Api-Key`, `X-Correlation-Id` e `Accept` (`verify` do WireMock) | ✅ local e CI (run 43547900481, §10.4) |
+| **INT-02:** 404 → 404 próprio (lab) | RK-INT-04 | `#int02_jogoInexistenteVira404Proprio` | Motivo `NAO_ENCONTRADO`; Problem Details 404 `jogo_nao_encontrado`; corpo do provedor ausente; nada persistido | ✅ |
+| **INT-03:** 500 → 503 controlado (lab) | RK-INT-01, RK-INT-04 | `#int03_erroDoProvedorVira503Controlado` (500, 502, 503); `#int03_provedorForaDoArVira503` (conexão recusada) | Motivo `INDISPONIVEL`; 503 `integracao_indisponivel`; **uma única** chamada; nada persistido | ✅ |
+| **INT-04:** resposta lenta → interromper e não persistir (lab) | RK-INT-01, RK-INT-02 | `#int04_timeoutInterrompeENaoPersiste` | Motivo `INDISPONIVEL`; nada persistido; o cliente desiste antes do atraso de 5 s (read-timeout de 1,5 s, tolerância larga) | ✅ |
+| **INT-05:** JSON inválido → rejeitar e registrar correlação (lab) | RK-INT-02 | `#int05_corpoInvalidoRejeitadoComCorrelacao` (10 casos: malformado, campo ausente, status desconhecido, tipo incompatível, placar fracionário, placar negativo, id divergente, `null`, content type não JSON, acima do limite) | Motivo `RESPOSTA_INVALIDA`; nada persistido; 502 `resposta_externa_invalida` com a **mesma** correlação do log e do header enviado | ✅ |
+| **INT-06:** 4xx é permanente e não se repete (lab §5) | RK-INT-05 | `#int06_quatrocentosNaoSaoRepetidos` (400, 401, 403, 429) | Motivo `RECUSADA`; 503; **uma única** chamada | ✅ |
+| **INT-07:** token do provedor no corpo de erro não atravessa a API (lab §6, "teste negativo obrigatório") | RK-INT-03, RK-INT-04 | `#int07_tokenDoProvedorNaoVaza`; `#int07_logSemCredencial`; `#configuracaoNuncaMostraOToken` | Token, mensagem e stack do provedor ausentes do Problem Details, da exceção (sem causa encadeada) e do log; log com correlação, status e duração; configuração imprime `token=***` | ✅ |
+| Contrato de erro (RN-21) | RK-INT-04 | `ContratoDeErroTest#rn21_ct21_01_*` (+3 linhas) | `jogo_nao_encontrado` 404, `integracao_indisponivel` 503, `resposta_externa_invalida` 502 | ✅ |
+
+### 10.3 Como os critérios de aceite do laboratório são garantidos
+
+| Critério | Como |
+|----------|------|
+| Suíte offline e repetível | WireMock em porta aleatória de `127.0.0.1` (`dynamicPort()`); a "queda" usa uma porta local fechada. Nenhum teste aponta para host externo (busca por `http(s)://` em `src/test`: só loopback). 3 execuções seguidas com o mesmo resultado. |
+| Nenhuma credencial real | Só `token-de-teste` nos testes; `application.properties` lê `${SPORTS_PROVIDER_URL}` e `${SPORTS_PROVIDER_TOKEN}`; `.env.example` com as variáveis vazias; INT-07 prova que o token não vai para log nem resposta |
+| Cenários no pipeline | `SportsProviderHttpTest` roda no `./mvnw -B verify` do CI (Surefire), dentro do check exigido `verify (Java 21)`; relatórios nos artifacts `relatorios-de-teste-*` e `cobertura-jacoco-*` |
+| RTM | Tabela §10.2 |
+| README | Seção "Integração com o provedor de esportes" |
+
+### 10.4 Execução no CI
+
+| Run | Evento | Resultado | Evidência |
+|-----|--------|-----------|-----------|
+| [43547900481](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43547900481) | PR #8, commit `5d6f17c` | ✅ `verify (Java 21)` | `SportsProviderHttpTest`: 27 execuções, 0 falhas, 4,6 s; suíte: 265 execuções, 0 falhas, 34 desabilitadas. `token-de-teste` aparece **0 vezes** no log do run. Artifacts `relatorios-de-teste-43547900481` e `cobertura-jacoco-43547900481` |
+| SonarCloud, PR #8 | Análise do código novo | ✅ Quality Gate **Passed** | Cobertura do código novo 91,2%, duplicação 0%, 0 issues, 0 hotspots |
+
+Os resultados ✅ da coluna "Execução" da §10.2 valem para a execução local e para este run.
+
+### 10.5 Decisões provisórias e pendências
+
+| Decisão | Por quê | Pendência |
+|---------|---------|-----------|
+| 502 `resposta_externa_invalida` para INT-05 | O material não fixa o status; 502 indica resposta inválida de um servidor upstream | Confirmar com o professor |
+| Outro 4xx (inclusive 429) → 503 `integracao_indisponivel`, sem repetir | Do ponto de vista do usuário, o serviço está indisponível; o material manda não repetir 4xx | 429 poderia merecer espera (`Retry-After`) |
+| Sem nova tentativa automática em 5xx | O material só permite retry "com limite, backoff e operação idempotente"; nada disso está definido | Política de retry |
+| Limites: conexão 500 ms, leitura 1.500 ms, corpo 64 KiB | Valores do material (timeouts) e hipótese (tamanho) | Validar com o provedor |
+| O read-timeout cobre a espera até os headers | Um provedor que mande os headers e "pingue" o corpo devagar não é interrompido pelo timeout | Timeout total de leitura |
+| Sem wiring Spring (`@ConfigurationProperties`) | O projeto ainda não tem camada Spring (DG-01); ligar agora exigiria `SPORTS_PROVIDER_URL` para a aplicação subir | Junto com a AP-02 do ciclo 01 |
+| Provedor fora de `docs/arquitetura.md` | Requisito vindo do laboratório | ADR do provedor externo (porta, contrato, degradação) |

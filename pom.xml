@@ -28,6 +28,7 @@
 	</scm>
 	<properties>
 		<java.version>21</java.version>
+		<wiremock.version>3.13.2</wiremock.version>
 		<!-- SonarCloud (Aula 07). Não são segredos; o token vem só do secret SONAR_TOKEN no CI. -->
 		<sonar.host.url>https://sonarcloud.io</sonar.host.url>
 		<sonar.organization>guilhermeafsantos</sonar.organization>
@@ -90,6 +91,14 @@
 		<dependency>
 			<groupId>org.testcontainers</groupId>
 			<artifactId>testcontainers-postgresql</artifactId>
+			<scope>test</scope>
+		</dependency>
+		<!-- Aula 08: servidor HTTP local e programável para o contrato do SportsProvider. Só no escopo de teste;
+		     o standalone traz Jetty e Jackson 2 sombreados, sem conflito com o Jackson 3 do Spring Boot 4. -->
+		<dependency>
+			<groupId>org.wiremock</groupId>
+			<artifactId>wiremock-standalone</artifactId>
+			<version>${wiremock.version}</version>
 			<scope>test</scope>
 		</dependency>
 	</dependencies>
