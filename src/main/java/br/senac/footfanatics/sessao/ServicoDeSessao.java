@@ -51,11 +51,19 @@ public class ServicoDeSessao implements RevogadorDeSessoes {
         return par(id, versao);
     }
 
-    /** Principal autenticado, ou FalhaDeAcesso TOKEN_INVALIDO (malformado, desconhecido, antigo ou revogado) / TOKEN_EXPIRADO. */
+    /**
+     * Decisão do token de acesso, na ordem da tabela do cenário E2 (Aula 07):
+     * ausente → TOKEN_AUSENTE; assinatura inválida (malformado, desconhecido ou de versão antiga) → TOKEN_INVALIDO;
+     * expiração ≤ agora → TOKEN_EXPIRADO; sessão revogada → TOKEN_REVOGADO; válido e vigente → Principal.
+     * Só um token válido e não expirado segue para as demais decisões de autorização.
+     */
     public Principal validar(String tokenDeAcesso) {
-        Sessao s = sessaoAtivaDoTokenDeAcesso(tokenDeAcesso);
-        if (relogio.agora().isAfter(s.acessoExpiraEm())) {
+        Sessao s = sessaoDoTokenDeAcesso(tokenDeAcesso);
+        if (!relogio.agora().isBefore(s.acessoExpiraEm())) {
             throw new FalhaDeAcesso(CodigoDeErro.TOKEN_EXPIRADO);
+        }
+        if (s.revogadaEm() != null) {
+            throw new FalhaDeAcesso(CodigoDeErro.TOKEN_REVOGADO);
         }
         return Principal.de(s.usuarioId());
     }
@@ -104,9 +112,15 @@ public class ServicoDeSessao implements RevogadorDeSessoes {
         }
     }
 
-    /** Revoga a sessão do dispositivo atual. Token já inválido → TOKEN_INVALIDO (provisório, QT-05). */
+    /**
+     * Revoga a sessão do dispositivo atual. Token ausente, inválido ou de sessão já revogada → o mesmo código da
+     * validação (provisório, QT-05). A expiração do token de acesso não impede o logout.
+     */
     public void logout(String tokenDeAcesso) {
-        Sessao s = sessaoAtivaDoTokenDeAcesso(tokenDeAcesso);
+        Sessao s = sessaoDoTokenDeAcesso(tokenDeAcesso);
+        if (s.revogadaEm() != null) {
+            throw new FalhaDeAcesso(CodigoDeErro.TOKEN_REVOGADO);
+        }
         revogar(s.id());
     }
 
@@ -119,10 +133,14 @@ public class ServicoDeSessao implements RevogadorDeSessoes {
 
     // ------------------------------------------------------------------
 
-    private Sessao sessaoAtivaDoTokenDeAcesso(String tokenDeAcesso) {
+    /** Sessão de um token de acesso autêntico (revogada ou não). Ausente → TOKEN_AUSENTE; não autêntico → TOKEN_INVALIDO. */
+    private Sessao sessaoDoTokenDeAcesso(String tokenDeAcesso) {
+        if (tokenDeAcesso == null || tokenDeAcesso.isBlank()) {
+            throw new FalhaDeAcesso(CodigoDeErro.TOKEN_AUSENTE);
+        }
         TokenLido lido = ler(tokenDeAcesso).orElseThrow(ServicoDeSessao::invalido);
         Sessao s = sessoes.buscarPorId(lido.sessao()).orElseThrow(ServicoDeSessao::invalido);
-        if (s.revogadaEm() != null || !Hashes.iguais(Hashes.sha256(tokenDeAcesso), s.hashTokenDeAcesso())) {
+        if (!Hashes.iguais(Hashes.sha256(tokenDeAcesso), s.hashTokenDeAcesso())) {
             throw invalido();
         }
         return s;
