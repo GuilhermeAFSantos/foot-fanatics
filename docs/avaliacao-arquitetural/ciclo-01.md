@@ -126,7 +126,7 @@ A única issue que o projeto teve, `java:S2077` (SQL montado dinamicamente em `i
 | AC-13 | ProvisionadorDeBanco | 93,3% / 100% | S2077 **FIXED** | A análise estática achou injeção de SQL no provisionamento dos papéis (senha com `$$`). Corrigida e coberta por CT-S15.04. |
 | AC-14 | Suíte + CI | 80/70 exigidos; 97,4% / 90,2% medidos | Quality Gate no PR #4: **Passed** (cobertura do código novo 100%, duplicação 0%) | O check `verify (Java 21)` agora também falha quando a cobertura cai abaixo do gate (demonstrado em `plano-tdd.md` §8.6) ou quando o Quality Gate reprova (`qualitygate.wait`). |
 | AC-15 | — | — | — | Sem código de auditoria ou log, sem medida. |
-| AC-16 | ValidadorDeDados, OrquestradorDoJob | 100% / 91,7% | 0 issues | Quarentena acima do limite **no Job** só passou a ser verificada com CT-S07.06 (trinca −1/0/+1). O branch restante é a janela vazia, bloqueada (volume mínimo). |
+| AC-16 | ValidadorDeDados, OrquestradorDoJob | 100% / 91,7% | 0 issues | Quarentena acima do limite **no Job** só passou a ser verificada com CT-S07.06 (−1 e +1 em torno do limite; o ponto exato é AM-02 e ficou fora do teste, `plano-tdd.md` §8.7). O branch restante é a janela vazia, bloqueada (volume mínimo). |
 
 ---
 
