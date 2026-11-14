@@ -59,7 +59,7 @@ jobs:
 
       - name: Relatórios do Surefire e do Failsafe
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: relatorios-de-teste-${{ github.run_id }}
           path: |
@@ -72,7 +72,7 @@ jobs:
       # antes do check, então o relatório existe também quando o gate de cobertura (80/70) reprova o build.
       - name: Relatório de cobertura (JaCoCo)
         if: always()
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: cobertura-jacoco-${{ github.run_id }}
           path: target/site/jacoco/
