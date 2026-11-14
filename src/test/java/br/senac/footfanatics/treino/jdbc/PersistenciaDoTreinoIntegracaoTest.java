@@ -226,6 +226,22 @@ class PersistenciaDoTreinoIntegracaoTest {
                 "DELETE FROM ml.execucao_treino"));
     }
 
+    // ---------------- Aula 07: issue do SonarCloud (java:S2077) ----------------
+
+    @Test
+    @DisplayName("RS-15 · CT-S15.04 · senha com $$, aspas e comentário provisiona o papel sem injetar SQL")
+    void rs15_cts15_04_senhaHostilNaoInjetaSql() {
+        String hostil = "x$$'; DROP SCHEMA ml CASCADE; -- \\ \"";
+        CredenciaisDosPapeis credenciais = new CredenciaisDosPapeis(hostil, SENHAS.senhaBatchLeitor(), SENHAS.senhaBatchRegistry());
+
+        new ProvisionadorDeBanco().provisionar(admin, credenciais);
+
+        assertAll(
+                () -> assertEquals("OK", sqlStateAoExecutar("api_app", hostil, "SELECT count(*) FROM app.usuario")),
+                () -> assertEquals("OK", sqlStateAoExecutar(POSTGRES.getUsername(), POSTGRES.getPassword(),
+                        "SELECT 1 FROM ml.checkpoint_treino")));
+    }
+
     // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
 
     private static final Instant CORTE_1 = W0.plusSeconds(3600);
