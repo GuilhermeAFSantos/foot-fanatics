@@ -615,7 +615,7 @@ Sem RF, a matriz é derivada de `README.md:12` e de P1–P3.
 | Evento | Comportamento proposto | Decisão | Pendência |
 |--------|------------------------|---------|-----------|
 | Login | Cria uma SESSAO por dispositivo e emite um token de acesso de vida curta mais um refresh token, guardado só como hash. | DA-04 | TTLs (Q-04) |
-| Requisição | O FiltroDeAutenticacao valida o token de acesso. Expirado → 401 `token_expirado`; malformado ou revogado → 401 `token_invalido`. **(E4)** O token de acesso é **opaco** e validado contra SESSAO a cada requisição autenticada (ADR-004). | DA-04, DA-17, ADR-004 | ~~Formato do token (ATAM)~~ TTL (Q-04) |
+| Requisição | O FiltroDeAutenticacao valida o token de acesso. ~~Expirado → 401 `token_expirado`; malformado ou revogado → 401 `token_invalido`.~~ **(Aula 07, cenário E2)** Decisão na ordem: ausente → 401 `token_ausente`; assinatura inválida (malformado, desconhecido ou de versão antiga) → 401 `token_invalido`; **expiração ≤ agora** → 401 `token_expirado`; sessão revogada → 401 `token_revogado`; válido e vigente → segue para a PoliticaDeAcesso. Token expirado nunca libera acesso, mesmo com assinatura ativa. **(E4)** O token de acesso é **opaco** e validado contra SESSAO a cada requisição autenticada (ADR-004). | DA-04, DA-17, ADR-004 | ~~Formato do token (ATAM)~~ TTL (Q-04) |
 | Renovação | Troca o refresh token por um novo (rotação) com controle otimista em SESSAO.`versao`. ~~Reapresentar um refresh já usado revoga a sessão.~~ **(E4)** Reapresentar o refresh **imediatamente anterior**, do mesmo dispositivo e dentro de uma tolerância curta, devolve o mesmo par já emitido. Fora disso, revoga a sessão (ADR-004; motivo: RA-12). | DA-04, ADR-004 | Limite de renovações (Q-04); tolerância (EXP-10) |
 | Renovação concorrente (dois dispositivos ou duas abas) | Cada dispositivo tem a própria SESSAO, sem disputa entre dispositivos. Na mesma sessão, só uma renovação vence (`versao`). ~~A outra recebe 401 `token_invalido`.~~ **(E4)** A outra, se estiver dentro da tolerância, recebe o mesmo par vencedor. | DA-04, ADR-004 | ~~Tolerância a corrida na mesma sessão → ATAM~~ Valor da tolerância (EXP-10) |
 | Logout | Revoga a SESSAO do dispositivo atual (`revogada_em`). | DA-04 | Logout global (Q-05) |
@@ -1727,7 +1727,7 @@ Formato: status; contexto e forças; requisitos e cenários; alternativas, com o
 | Contexto e forças | P3 precisa distinguir 401/403 e expirado/inválido (`docs/prd.md:24-25`). |
 | Requisitos / cenários | RAS-06, D7; CEN-06 |
 | Alternativas | (b) formato próprio: **descartada** porque não há requisito que o justifique, e o Spring suporta o padrão nativamente. |
-| Decisão | Problem Details (RFC 9457) com um código estável por situação (§4.1, §4.2). |
+| Decisão | Problem Details (RFC 9457) com um código estável por situação (§4.1, §4.2). **(Aula 07)** O token de acesso tem quatro códigos 401: `token_ausente`, `token_invalido`, `token_expirado` e `token_revogado` (cenário E2). |
 | Consequências | **+** contrato previsível para P3. **−** os códigos viram API pública e mudar exige versionamento. |
 | Riscos | Formato oficial diferente (Q-07). |
 | Evidência necessária | Teste de contrato por situação (CEN-06). |
