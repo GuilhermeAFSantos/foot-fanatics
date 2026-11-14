@@ -59,7 +59,7 @@ Os relatórios ficam em `target/surefire-reports/`.
 
 ## Integração com o provedor de esportes
 
-O Foot Fanatics busca jogos num provedor externo pela porta `SportsProvider`. O adapter HTTP é `esportes/http/SportsProviderHttp`. A rastreabilidade (requisito → risco → teste → execução) está em [`docs/testes/plano-tdd.md` §10](docs/testes/plano-tdd.md).
+O Foot Fanatics busca jogos num provedor externo pela porta `SportsProvider`. O adapter HTTP é `esportes/http/SportsProviderHttp`. A rastreabilidade (requisito → risco → teste → evidência) está na [RTM da integração](docs/testes/plano-tdd.md#rtm-integracao) (`docs/testes/plano-tdd.md` §10.2). Cada linha leva à origem do requisito, ao método de teste e ao run do CI em que ele passou.
 
 **Rodar os testes da integração localmente** (não precisam de rede, Docker nem credencial):
 
