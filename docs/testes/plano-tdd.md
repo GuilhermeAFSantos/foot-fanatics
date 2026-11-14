@@ -794,6 +794,8 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 
 ### 7.5 Matriz atual: regra → caso → teste → status
 
+> **Evidência do status (Aula 08):** **VERDE** = o teste passou e **DESABILITADO** = o teste foi ignorado (`@Disabled`, com o motivo na coluna Observação), ambos no [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) da `main`, commit `ad1ac07`: 265 execuções, 0 falhas, 0 erros, 34 ignoradas. Relatório por classe no artifact [relatorios-de-teste-43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824/artifacts/14094723621) (expira em 2026-11-21; depois, o resumo continua no log do run).
+
 | Regra | Caso | Teste (classe#método) | Situação no plano | Status green | Observação |
 |-------|------|-----------------------|-------------------|--------------|------------|
 | RN-01 | CT-01.01 | `IdentidadeTest#rn01_ct01_01_cadastroPermiteAutenticar` | Bloqueado: quais campos são obrigatórios e o que é "válido" não está definido (LG-01) | **VERDE** |  |
@@ -1135,25 +1137,77 @@ Todas as mudanças trocam `token_invalido` por um código **mais específico**, 
 
 **Contrato declarado do provedor (hipótese nossa; o dublê prova a reação a ele, não o comportamento real do terceiro):** resposta 200 `application/json` com `{"id": inteiro, "status": "SCHEDULED"|"IN_PLAY"|"FINISHED", "home": inteiro ≥ 0, "away": inteiro ≥ 0}`.
 
-### 10.2 Matriz de rastreabilidade (RTM): requisito → risco → teste → execução
+### 10.2 Matriz de rastreabilidade (RTM): requisito → risco → teste → evidência
 
-Riscos da integração (novos, prefixo RK-INT):
-- **RK-INT-01:** provedor lento ou fora do ar trava ou derruba o Foot Fanatics.
-- **RK-INT-02:** dado externo inválido é gravado e corrompe o estado.
-- **RK-INT-03:** credencial do provedor vaza (código, log, resposta).
-- **RK-INT-04:** erro ou conteúdo do provedor é exposto ao usuário.
-- **RK-INT-05:** repetir uma chamada condenada (4xx) agrava o problema (bloqueio por cota, credencial).
+<a id="rtm-integracao"></a>
+A RTM é **navegável**: cada requisito e cada risco têm âncora com a origem, cada teste aponta para o método no commit avaliado e cada status aponta para uma execução do CI. Nenhum status existe sem execução.
 
-| Requisito (origem) | Risco | Teste (classe#método) | Asserções principais | Execução |
-|--------------------|-------|-----------------------|----------------------|----------|
-| **INT-01:** 200 válido → mapear o modelo interno (lab) | RK-INT-02 | `SportsProviderHttpTest#int01_partidaConcluidaMapeadaComRequestNoContrato`; `#int01_statusDoProvedorMapeado` (×3 status) | Objeto mapeado igual ao esperado **e** request com `X-Api-Key`, `X-Correlation-Id` e `Accept` (`verify` do WireMock) | ✅ local e CI (run 43547900481, §10.4) |
-| **INT-02:** 404 → 404 próprio (lab) | RK-INT-04 | `#int02_jogoInexistenteVira404Proprio` | Motivo `NAO_ENCONTRADO`; Problem Details 404 `jogo_nao_encontrado`; corpo do provedor ausente; nada persistido | ✅ |
-| **INT-03:** 500 → 503 controlado (lab) | RK-INT-01, RK-INT-04 | `#int03_erroDoProvedorVira503Controlado` (500, 502, 503); `#int03_provedorForaDoArVira503` (conexão recusada) | Motivo `INDISPONIVEL`; 503 `integracao_indisponivel`; **uma única** chamada; nada persistido | ✅ |
-| **INT-04:** resposta lenta → interromper e não persistir (lab) | RK-INT-01, RK-INT-02 | `#int04_timeoutInterrompeENaoPersiste` | Motivo `INDISPONIVEL`; nada persistido; o cliente desiste antes do atraso de 5 s (read-timeout de 1,5 s, tolerância larga) | ✅ |
-| **INT-05:** JSON inválido → rejeitar e registrar correlação (lab) | RK-INT-02 | `#int05_corpoInvalidoRejeitadoComCorrelacao` (10 casos: malformado, campo ausente, status desconhecido, tipo incompatível, placar fracionário, placar negativo, id divergente, `null`, content type não JSON, acima do limite) | Motivo `RESPOSTA_INVALIDA`; nada persistido; 502 `resposta_externa_invalida` com a **mesma** correlação do log e do header enviado | ✅ |
-| **INT-06:** 4xx é permanente e não se repete (lab §5) | RK-INT-05 | `#int06_quatrocentosNaoSaoRepetidos` (400, 401, 403, 429) | Motivo `RECUSADA`; 503; **uma única** chamada | ✅ |
-| **INT-07:** token do provedor no corpo de erro não atravessa a API (lab §6, "teste negativo obrigatório") | RK-INT-03, RK-INT-04 | `#int07_tokenDoProvedorNaoVaza`; `#int07_logSemCredencial`; `#configuracaoNuncaMostraOToken` | Token, mensagem e stack do provedor ausentes do Problem Details, da exceção (sem causa encadeada) e do log; log com correlação, status e duração; configuração imprime `token=***` | ✅ |
-| Contrato de erro (RN-21) | RK-INT-04 | `ContratoDeErroTest#rn21_ct21_01_*` (+3 linhas) | `jogo_nao_encontrado` 404, `integracao_indisponivel` 503, `resposta_externa_invalida` 502 | ✅ |
+**Execução de referência:**
+- [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824): push na `main`, commit [`ad1ac07`](https://github.com/GuilhermeAFSantos/foot-fanatics/commit/ad1ac0758b4aeeb981d021d61a46792297c3d4ec), o merge do PR #8.
+  - `SportsProviderHttpTest`: **27 execuções, 0 falhas, 0 ignoradas**.
+  - `ContratoDeErroTest`: 12 execuções, 0 falhas.
+  - Suíte: 265 execuções, 0 falhas, 34 desabilitadas.
+  - Quality Gate do SonarCloud: **PASSED**.
+  - `token-de-teste` aparece 0 vezes no log.
+  - Relatórios: [relatorios-de-teste-43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824/artifacts/14094723621) (Surefire) e [cobertura-jacoco-43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824/artifacts/14095241905) (JaCoCo).
+- Execução anterior, no PR: [run 43547900481](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43547900481) (PR #8, `5d6f17c`), com o mesmo resultado.
+
+> Os links de run, commit e teste abrem sem login. **Baixar um artifact exige estar logado no GitHub**, mesmo com o repositório público; sem login, o link do artifact devolve 404. Os artifacts expiram em **2026-11-21** (retenção de 7 dias do workflow). Depois disso, a evidência continua no log do run (a página do run mostra o resumo do Surefire), e o relatório pode ser regenerado com `./mvnw -B clean verify` no mesmo commit.
+
+#### Requisitos
+
+Origem: material da Aula 08, seções 5 (cenários de degradação), 6 (segurança da chamada), 7 (laboratório, matriz INT-01 a INT-05), 8 (registro na RTM) e critérios de aceite.
+
+| ID | Requisito | Tipo | Origem | Cenários |
+|----|-----------|------|--------|----------|
+| <a id="rf-int-01"></a>**RF-INT-01** | Buscar um jogo no provedor e mapeá-lo para o modelo interno, com o request no contrato declarado (rota, `X-Api-Key`, `X-Correlation-Id`) | Funcional | Aula 08 §4, §7 (INT-01) | INT-01 |
+| <a id="rf-int-02"></a>**RF-INT-02** | Jogo inexistente no provedor → 404 próprio do Foot Fanatics | Funcional | Aula 08 §7 (INT-02) | INT-02 |
+| <a id="rnf-int-01"></a>**RNF-INT-01** | Provedor indisponível (5xx, fora do ar ou lento) não derruba a API: resposta 503 controlada, interrompida pelo timeout | Confiabilidade | Aula 08 §5 (timeout), §7 (INT-03, INT-04), §8 (exemplo da RTM) | INT-03, INT-04 |
+| <a id="rnf-int-02"></a>**RNF-INT-02** | Conteúdo externo fora do contrato, ou falha da chamada, nunca altera o estado, e a rejeição é rastreável pela correlação | Integridade, observabilidade | Aula 08 §5 ("Corpo inválido"), §7 (INT-04, INT-05) | INT-04, INT-05 |
+| <a id="rnf-int-03"></a>**RNF-INT-03** | Erro do provedor vira código e mensagem próprios; corpo, stack e status de terceiro não atravessam | Segurança | Aula 08 §5 (4xx/5xx), §6 ("Erro neutro") | INT-02, INT-03, INT-07 |
+| <a id="rnf-int-04"></a>**RNF-INT-04** | Credencial do provedor nunca aparece em código, fixture, relatório, log ou resposta | Segurança | Aula 08 §6 ("Mascaramento", "Teste negativo obrigatório"); critério de aceite 2 | INT-07 |
+| <a id="rnf-int-05"></a>**RNF-INT-05** | 4xx é permanente e não é repetido; 5xx também não é repetido sem política de retry definida | Confiabilidade | Aula 08 §5 ("Status 4xx e 5xx") | INT-03, INT-06 |
+| <a id="rnf-int-06"></a>**RNF-INT-06** | A suíte de integração roda offline, no pipeline, e repete o mesmo resultado | Testabilidade | Aula 08, critérios de aceite 1 e 3 | INT-01 a INT-07 |
+
+#### Riscos
+
+| ID | Risco | Requisitos que o mitigam |
+|----|-------|--------------------------|
+| <a id="rk-int-01"></a>**RK-INT-01** | Provedor lento ou fora do ar trava ou derruba o Foot Fanatics | [RNF-INT-01](#rnf-int-01) |
+| <a id="rk-int-02"></a>**RK-INT-02** | Dado externo inválido é gravado e corrompe o estado | [RNF-INT-02](#rnf-int-02), [RF-INT-01](#rf-int-01) |
+| <a id="rk-int-03"></a>**RK-INT-03** | Credencial do provedor vaza (código, log, resposta) | [RNF-INT-04](#rnf-int-04) |
+| <a id="rk-int-04"></a>**RK-INT-04** | Erro ou conteúdo do provedor é exposto ao usuário | [RNF-INT-03](#rnf-int-03), [RF-INT-02](#rf-int-02) |
+| <a id="rk-int-05"></a>**RK-INT-05** | Repetir uma chamada condenada (4xx) agrava o problema (cota, bloqueio de credencial) | [RNF-INT-05](#rnf-int-05) |
+| <a id="rk-int-06"></a>**RK-INT-06** | Teste que depende de rede ou de serviço real fica instável e mascara regressões | [RNF-INT-06](#rnf-int-06) |
+
+#### Matriz
+
+**Nível:**
+- **Integração (HTTP):** o adapter real fala HTTP de verdade com o WireMock em `127.0.0.1`, numa porta aleatória.
+- **Integração (rede):** o adapter real contra uma porta local fechada.
+- **Unidade:** objeto Java isolado, sem rede.
+
+| Requisito/RNF | Risco | Teste | Nível | Evidência | Status |
+|---------------|-------|-------|-------|-----------|--------|
+| [RF-INT-01](#rf-int-01) | [RK-INT-02](#rk-int-02) | INT-01 · [`SportsProviderHttpTest#int01_partidaConcluidaMapeadaComRequestNoContrato`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L104) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) · [relatório](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824/artifacts/14094723621) | Passou |
+| [RF-INT-01](#rf-int-01) | [RK-INT-02](#rk-int-02) | INT-01 · [`#int01_statusDoProvedorMapeado`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L124) (×3: SCHEDULED, IN_PLAY, FINISHED) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RF-INT-02](#rf-int-02), [RNF-INT-03](#rnf-int-03) | [RK-INT-04](#rk-int-04) | INT-02 · [`#int02_jogoInexistenteVira404Proprio`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L142) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-01](#rnf-int-01), [RNF-INT-03](#rnf-int-03), [RNF-INT-05](#rnf-int-05) | [RK-INT-01](#rk-int-01), [RK-INT-04](#rk-int-04) | INT-03 · [`#int03_erroDoProvedorVira503Controlado`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L161) (×3: 500, 502, 503; uma única chamada) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-01](#rnf-int-01) | [RK-INT-01](#rk-int-01) | INT-03 · [`#int03_provedorForaDoArVira503`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L176) (conexão recusada) | Integração (rede) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-01](#rnf-int-01), [RNF-INT-02](#rnf-int-02) | [RK-INT-01](#rk-int-01), [RK-INT-02](#rk-int-02) | INT-04 · [`#int04_timeoutInterrompeENaoPersiste`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L197) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-02](#rnf-int-02) | [RK-INT-02](#rk-int-02) | INT-05 · [`#int05_corpoInvalidoRejeitadoComCorrelacao`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L217) (×10: malformado, campo ausente, status desconhecido, tipo incompatível, placar fracionário, placar negativo, id divergente, `null`, content type não JSON, acima do limite) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-05](#rnf-int-05) | [RK-INT-05](#rk-int-05) | INT-06 · [`#int06_quatrocentosNaoSaoRepetidos`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L256) (×4: 400, 401, 403, 429; uma única chamada) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-03](#rnf-int-03), [RNF-INT-04](#rnf-int-04) | [RK-INT-03](#rk-int-03), [RK-INT-04](#rk-int-04) | INT-07 · [`#int07_tokenDoProvedorNaoVaza`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L269) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-04](#rnf-int-04) | [RK-INT-03](#rk-int-03) | INT-07 · [`#int07_logSemCredencial`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L287) | Integração (HTTP) | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824); `token-de-teste` com 0 ocorrências no log do run | Passou |
+| [RNF-INT-04](#rnf-int-04) | [RK-INT-03](#rk-int-03) | [`#configuracaoNuncaMostraOToken`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java#L299) | Unidade | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RF-INT-02](#rf-int-02), [RNF-INT-01](#rnf-int-01), [RNF-INT-03](#rnf-int-03) | [RK-INT-04](#rk-int-04) | RN-21 · [`ContratoDeErroTest#rn21_ct21_01_problemDetailsComCodigoEstavel`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/erro/ContratoDeErroTest.java#L47) (404, 503 e 502 da integração) | Unidade | [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Passou |
+| [RNF-INT-06](#rnf-int-06) | [RK-INT-06](#rk-int-06) | Toda a classe [`SportsProviderHttpTest`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/test/java/br/senac/footfanatics/esportes/http/SportsProviderHttpTest.java) (WireMock `dynamicPort()` em loopback; nenhum host externo) | Integração (HTTP) | Mesmo resultado (27/27) em dois runs do CI: [43547900481](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43547900481) e [43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824); localmente, 3 execuções seguidas com o mesmo resultado (§10.3) | Passou |
+
+**Código sob teste** (no mesmo commit):
+- [`SportsProviderHttp.buscarJogo`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/main/java/br/senac/footfanatics/esportes/http/SportsProviderHttp.java#L69)
+- [`SportsProviderHttp.mapear`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/main/java/br/senac/footfanatics/esportes/http/SportsProviderHttp.java#L114)
+- [`ServicoDeJogos.sincronizar`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/main/java/br/senac/footfanatics/esportes/ServicoDeJogos.java#L17)
+- [`TratadorDeErros.paraProblema(FalhaNaIntegracaoException)`](https://github.com/GuilhermeAFSantos/foot-fanatics/blob/ad1ac0758b4aeeb981d021d61a46792297c3d4ec/src/main/java/br/senac/footfanatics/erro/TratadorDeErros.java#L23)
 
 ### 10.3 Como os critérios de aceite do laboratório são garantidos
 
@@ -1171,8 +1225,9 @@ Riscos da integração (novos, prefixo RK-INT):
 |-----|--------|-----------|-----------|
 | [43547900481](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43547900481) | PR #8, commit `5d6f17c` | ✅ `verify (Java 21)` | `SportsProviderHttpTest`: 27 execuções, 0 falhas, 4,6 s; suíte: 265 execuções, 0 falhas, 34 desabilitadas. `token-de-teste` aparece **0 vezes** no log do run. Artifacts `relatorios-de-teste-43547900481` e `cobertura-jacoco-43547900481` |
 | SonarCloud, PR #8 | Análise do código novo | ✅ Quality Gate **Passed** | Cobertura do código novo 91,2%, duplicação 0%, 0 issues, 0 hotspots |
+| [43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) | Push na `main`, commit `ad1ac07` (merge do PR #8) | ✅ `verify (Java 21)` | **Execução de referência da RTM (§10.2).** `SportsProviderHttpTest`: 27 execuções, 0 falhas, 5,8 s; suíte: 265 execuções, 0 falhas, 34 desabilitadas; Quality Gate da `main`: PASSED; `token-de-teste`: 0 ocorrências no log. Artifacts `relatorios-de-teste-43548364824` e `cobertura-jacoco-43548364824` (expiram em 2026-11-21) |
 
-Os resultados ✅ da coluna "Execução" da §10.2 valem para a execução local e para este run.
+O status "Passou" de cada linha da §10.2 aponta para o run 43548364824. As execuções locais (§10, cabeçalho) servem só de complemento.
 
 ### 10.5 Decisões provisórias e pendências
 
