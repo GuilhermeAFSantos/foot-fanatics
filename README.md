@@ -110,3 +110,6 @@ Para medir a cobertura localmente, use `./mvnw -B clean verify`: sem `clean`, o 
 - [docs/prd.md](docs/prd.md): requisitos de produto
 - [docs/arquitetura.md](docs/arquitetura.md): arquitetura
 - [docs/plano-de-teste.md](docs/plano-de-teste.md): plano de teste
+- [docs/testes/plano-tdd.md](docs/testes/plano-tdd.md): plano de TDD (inventário de regras, casos, decisões)
+- [docs/rtm.md](docs/rtm.md): **matriz de rastreabilidade (RTM)**: requisito → caso → teste → nível → evidência → status, gerada por `scripts/gerar-rtm.js`
+- [docs/avaliacao-arquitetural/ciclo-01.md](docs/avaliacao-arquitetural/ciclo-01.md): avaliação arquitetural ATAM, ciclo 01

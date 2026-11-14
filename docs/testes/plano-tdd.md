@@ -794,7 +794,9 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 
 ### 7.5 Matriz atual: regra → caso → teste → status
 
-> **Evidência do status (Aula 08):** **VERDE** = o teste passou e **DESABILITADO** = o teste foi ignorado (`@Disabled`, com o motivo na coluna Observação), ambos no [run 43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824) da `main`, commit `ad1ac07`: 265 execuções, 0 falhas, 0 erros, 34 ignoradas. Relatório por classe no artifact [relatorios-de-teste-43548364824](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43548364824/artifacts/14094723621) (expira em 2026-11-21; depois, o resumo continua no log do run).
+> **Visão navegável:** [`docs/rtm.md`](../rtm.md) consolida esta matriz e a da §10.2, com link para cada método de teste e a execução de cada status. Ela é gerada por `scripts/gerar-rtm.js` a partir deste plano.
+
+> **Evidência do status (Aula 08):** **VERDE** = o teste passou e **DESABILITADO** = o teste foi ignorado (`@Disabled`, com o motivo na coluna Observação), ambos no [run 43550105896](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43550105896) do commit `fa8bcc0` (PR #10, depois da correção da §8.7): 264 execuções, 0 falhas, 0 erros, 34 ignoradas. Relatório por classe no artifact [relatorios-de-teste-43550105896](https://github.com/GuilhermeAFSantos/foot-fanatics/actions/runs/43550105896/artifacts/14095891036) (expira 7 dias após o run; depois, o resumo continua no log do run). Nas linhas com os dois status, o método da borda é o ignorado.
 
 | Regra | Caso | Teste (classe#método) | Situação no plano | Status green | Observação |
 |-------|------|-----------------------|-------------------|--------------|------------|
