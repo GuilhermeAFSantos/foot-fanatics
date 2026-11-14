@@ -13,11 +13,16 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import br.senac.footfanatics.acesso.Classificacao;
+import br.senac.footfanatics.acesso.Principal;
 import br.senac.footfanatics.apoio.CenarioDeAcesso;
 import br.senac.footfanatics.apoio.SessoesEmMemoria;
+import br.senac.footfanatics.assinatura.Assinatura;
+import br.senac.footfanatics.assinatura.Plano;
 import br.senac.footfanatics.erro.CodigoDeErro;
 import br.senac.footfanatics.erro.FalhaDeAcesso;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.ZoneOffset;
 import java.util.HashSet;
 import java.util.List;
@@ -129,9 +134,12 @@ class SessaoTest {
     }
 
     @Test
-    @Disabled("Bloqueado: AM-01, no instante exato do TTL o token expira?")
-    @DisplayName("RN-06 · CT-06.03 · token exatamente em TTL_acesso")
+    @DisplayName("RN-06 · CT-06.03 · token exatamente em TTL_acesso → token_expirado (expiração ≤ agora; Aula 07, E2)")
     void rn06_ct06_03_bordaDoTtl() {
+        ParDeTokens par = sessao.login(EMAIL, SENHA, "celular");
+        c.relogio.avancar(TTL_ACESSO);
+
+        assertEquals(CodigoDeErro.TOKEN_EXPIRADO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
     }
 
     @Test
@@ -159,18 +167,22 @@ class SessaoTest {
     }
 
     @Test
-    @DisplayName("RN-06 · CT-06.07 · token de sessão revogada → token_invalido, nunca aceito")
+    @DisplayName("RN-06 · CT-06.07 · token de sessão revogada → token_revogado, nunca aceito (Aula 07, E2)")
     void rn06_ct06_07_tokenDeSessaoRevogada() {
         ParDeTokens par = sessao.login(EMAIL, SENHA, "celular");
         sessao.revogarTodas(usuario);
 
-        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
+        assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
     }
 
     @Test
-    @Disabled("Bloqueado: QT-04, expirado e revogado ao mesmo tempo: qual código prevalece?")
-    @DisplayName("RN-06 · CT-06.08 · token expirado e revogado")
+    @DisplayName("RN-06 · CT-06.08 · token expirado e revogado → token_expirado (ordem da tabela E2, Aula 07)")
     void rn06_ct06_08_expiradoERevogado() {
+        ParDeTokens par = sessao.login(EMAIL, SENHA, "celular");
+        sessao.logout(par.tokenDeAcesso());
+        c.relogio.avancar(TTL_ACESSO.plus(UM_MS));
+
+        assertEquals(CodigoDeErro.TOKEN_EXPIRADO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
     }
 
     // ---------------- RN-07 Renovação (docs/arquitetura.md:619) ----------------
@@ -209,7 +221,7 @@ class SessaoTest {
         c.relogio.avancar(TOLERANCIA_REUSO.plus(UM_MS));
 
         assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.renovar(p0.refreshToken(), "celular")));
-        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(p1.tokenDeAcesso())));
+        assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> sessao.validar(p1.tokenDeAcesso())));
     }
 
     @Test
@@ -219,7 +231,7 @@ class SessaoTest {
         ParDeTokens p1 = sessao.renovar(p0.refreshToken(), "celular");
 
         assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.renovar(p0.refreshToken(), "outro")));
-        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(p1.tokenDeAcesso())));
+        assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> sessao.validar(p1.tokenDeAcesso())));
     }
 
     @Test
@@ -230,7 +242,7 @@ class SessaoTest {
         ParDeTokens p2 = sessao.renovar(p1.refreshToken(), "celular");
 
         assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.renovar(p0.refreshToken(), "celular")));
-        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(p2.tokenDeAcesso())));
+        assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> sessao.validar(p2.tokenDeAcesso())));
     }
 
     @Test
@@ -346,7 +358,7 @@ class SessaoTest {
 
         sessao.logout(par.tokenDeAcesso());
 
-        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
+        assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
     }
 
     @Test
@@ -385,7 +397,7 @@ class SessaoTest {
         assertThrows(FalhaDeAcesso.class, () -> sessao.renovar(par.refreshToken(), "celular"));
         c.relogio.avancar(TOLERANCIA_REUSO.multipliedBy(2));
 
-        assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
+        assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso())));
     }
 
     // ---------------- Aula 07: lacunas de risco apontadas pelo JaCoCo ----------------
@@ -394,17 +406,41 @@ class SessaoTest {
     private static final String UUID_QUALQUER = "0f8fad5b-d9cb-469f-a165-70867728950e";
 
     @ParameterizedTest(name = "token [{0}] → token_invalido")
-    @NullAndEmptySource
     @ValueSource(strings = {
             UUID_QUALQUER + ".1.",          // assinatura (HMAC) vazia
             "nao-e-uuid.1.assinatura",      // id da sessão ilegível
             UUID_QUALQUER + ".x.assinatura" // versão não numérica
     })
-    @DisplayName("RN-06 · CT-06.09 · token ausente, vazio ou com partes ilegíveis é negado como token_invalido")
-    void rn06_ct06_09_tokenAusenteOuIlegivel(String token) {
+    @DisplayName("RN-06 · CT-06.09 · token com partes ilegíveis é negado como token_invalido")
+    void rn06_ct06_09_tokenIlegivel(String token) {
         sessao.login(EMAIL, SENHA, "celular");
 
         assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> sessao.validar(token)));
+    }
+
+    @ParameterizedTest(name = "token [{0}] → token_ausente")
+    @NullAndEmptySource
+    @ValueSource(strings = {"   "})
+    @DisplayName("RN-06 · CT-06.10 · requisição sem token (nulo, vazio ou só espaços) → token_ausente (Aula 07, E2)")
+    void rn06_ct06_10_tokenAusente(String token) {
+        sessao.login(EMAIL, SENHA, "celular");
+
+        assertEquals(CodigoDeErro.TOKEN_AUSENTE, codigoDaFalha(() -> sessao.validar(token)));
+    }
+
+    @Test
+    @DisplayName("RN-06 · CT-06.11 · token expirado nunca libera acesso, mesmo com a assinatura premium ativa (Aula 07, E2)")
+    void rn06_ct06_11_expiradoNegaMesmoComAssinaturaAtiva() {
+        c.assinaturas.salvar(new Assinatura(UUID.randomUUID(), usuario, Plano.PREMIUM,
+                T0.minus(Duration.ofDays(1)), T0.plus(Duration.ofDays(30)), null));
+        ParDeTokens par = sessao.login(EMAIL, SENHA, "celular");
+        c.relogio.avancar(TTL_ACESSO);
+
+        assertAll(
+                // a assinatura ativa existe justamente para provar a precedência da expiração do token
+                () -> assertDoesNotThrow(() -> c.politica.exigirAcessoAoConteudo(Principal.de(usuario),
+                        Classificacao.EXCLUSIVA)),
+                () -> assertEquals(CodigoDeErro.TOKEN_EXPIRADO, codigoDaFalha(() -> sessao.validar(par.tokenDeAcesso()))));
     }
 
     @Test
@@ -459,7 +495,7 @@ class SessaoTest {
 
         assertAll(
                 () -> assertNotNull(renovadoNaCorrida.get()),
-                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO,
+                () -> assertEquals(CodigoDeErro.TOKEN_REVOGADO,
                         codigoDaFalha(() -> servico.validar(renovadoNaCorrida.get().tokenDeAcesso()))),
                 () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO,
                         codigoDaFalha(() -> servico.renovar(renovadoNaCorrida.get().refreshToken(), "celular"))),
@@ -483,6 +519,6 @@ class SessaoTest {
         assertAll(
                 () -> assertEquals(T0, depois.revogadaEm()),
                 () -> assertEquals(versaoAntes + 1, depois.versao()),
-                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO, codigoDaFalha(() -> servico.validar(p0.tokenDeAcesso()))));
+                () -> assertEquals(CodigoDeErro.TOKEN_REVOGADO, codigoDaFalha(() -> servico.validar(p0.tokenDeAcesso()))));
     }
 }

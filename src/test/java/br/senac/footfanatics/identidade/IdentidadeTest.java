@@ -181,7 +181,7 @@ class IdentidadeTest {
         // Assert
         FalhaDeAcesso falha = assertThrows(FalhaDeAcesso.class, () -> sessao.validar(antiga.tokenDeAcesso()));
         assertAll(
-                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO, falha.codigo()),
+                () -> assertEquals(CodigoDeErro.TOKEN_REVOGADO, falha.codigo()),
                 () -> assertTrue(identidade.autenticar(EMAIL, "senha-nova-456").isPresent()),
                 () -> assertTrue(identidade.autenticar(EMAIL, SENHA).isEmpty()));
     }
@@ -294,7 +294,7 @@ class IdentidadeTest {
         identidade.redefinirSenha(canal.ultimoCodigoPara(EMAIL), "senha-nova-456");
 
         assertAll(
-                () -> assertEquals(CodigoDeErro.TOKEN_INVALIDO,
+                () -> assertEquals(CodigoDeErro.TOKEN_REVOGADO,
                         assertThrows(FalhaDeAcesso.class, () -> sessao.validar(daBia.tokenDeAcesso())).codigo()),
                 () -> assertEquals(caio, sessao.validar(doCaio.tokenDeAcesso()).usuarioId()));
     }

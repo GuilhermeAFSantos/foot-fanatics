@@ -21,7 +21,8 @@ public class TratadorDeErros {
 
     private static HttpStatus statusDe(CodigoDeErro codigo) {
         return switch (codigo) {
-            case AUTENTICACAO_NECESSARIA, TOKEN_EXPIRADO, TOKEN_INVALIDO -> HttpStatus.UNAUTHORIZED;
+            case AUTENTICACAO_NECESSARIA, TOKEN_AUSENTE, TOKEN_EXPIRADO, TOKEN_INVALIDO, TOKEN_REVOGADO ->
+                    HttpStatus.UNAUTHORIZED;
             case PLANO_INSUFICIENTE, ACESSO_NEGADO -> HttpStatus.FORBIDDEN;
         };
     }

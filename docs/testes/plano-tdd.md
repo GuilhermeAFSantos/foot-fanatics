@@ -75,7 +75,7 @@ Nenhum artefato define valores para os parâmetros abaixo. Os casos-limite usam 
 | RN-03 | Existe perfil de usuário. | `README.md:9` | A | E1 |
 | RN-04 | Recuperação de acesso: código de uso único e curto, guardado como hash; mesma resposta para e-mail existente ou inexistente; o sucesso revoga as sessões existentes. | `README.md:9`; `docs/arquitetura.md:623`; ADR-015 | C | E1 |
 | RN-05 | O login cria uma SESSAO por dispositivo e emite token de acesso + refresh token (este guardado só como hash). | `README.md:10`; `docs/arquitetura.md:617`; ADR-004 | C | E2 |
-| RN-06 | Token de acesso expirado → 401 `token_expirado`; malformado ou revogado → 401 `token_invalido`. O token é opaco e validado contra SESSAO a cada requisição. | `README.md:10`; `docs/arquitetura.md:618`; ADR-004, ADR-014 | C | E2 |
+| RN-06 | ~~Token de acesso expirado → 401 `token_expirado`; malformado ou revogado → 401 `token_invalido`.~~ **(Aula 07, §9)** Ausente → 401 `token_ausente`; assinatura inválida → 401 `token_invalido`; expiração ≤ agora → 401 `token_expirado`; revogado → 401 `token_revogado`; só válido e vigente prossegue, mesmo com assinatura ativa. O token é opaco e validado contra SESSAO a cada requisição. | `README.md:10`; `docs/arquitetura.md:618`; ADR-004, ADR-014; **cenário E2 da Aula 07** | C | E2 |
 | RN-07 | A renovação troca o refresh por um novo (rotação). O refresh imediatamente anterior, reapresentado pelo mesmo dispositivo dentro da tolerância, devolve o mesmo par. Fora disso, revoga a sessão. | `README.md:10`; `docs/arquitetura.md:619`; ADR-004 | C | E2 |
 | RN-08 | Na renovação concorrente da mesma sessão, só uma vence (`versao`), e a outra, dentro da tolerância, recebe o mesmo par. Cada dispositivo tem sua própria SESSAO. | `docs/arquitetura.md:620`; ADR-004 | C | E2 |
 | RN-09 | O logout revoga a SESSAO do dispositivo atual, e o token deixa de valer na hora. | `README.md:10`; `docs/arquitetura.md:621`; ADR-004 (atraso 0) | C | E2 |
@@ -158,12 +158,12 @@ Nenhum caso possível. O artefato só diz que "perfil" existe, sem nenhuma regra
 |------|------|---------|--------------------|----------|
 | CT-06.01 | F | Requisição autenticada com token válido. | Principal autenticado; a requisição segue. | Condicional |
 | CT-06.02 | L | Requisição em `TTL_acesso − 1 ms`. | Aceita. | **Bloqueado:** `TTL_acesso` (Q-04) |
-| CT-06.03 | L | Requisição exatamente em `TTL_acesso`. | **Ambíguo:** expira no instante ou depois? (AM-01) | **Bloqueado** |
+| CT-06.03 | L | Requisição exatamente em `TTL_acesso`. | 401 `token_expirado` (Aula 07, §9; antes ambíguo, AM-01) | Pronto |
 | CT-06.04 | L | Requisição em `TTL_acesso + 1 ms`. | 401 `token_expirado`. | **Bloqueado:** `TTL_acesso` |
 | CT-06.05 | I | Token malformado. | 401 `token_invalido`. | Condicional |
 | CT-06.06 | I | Token inexistente (formato válido, sem SESSAO). | 401 `token_invalido`. | Condicional |
 | CT-06.07 | P | Token de sessão revogada. | 401 `token_invalido`, nunca 200. | Condicional |
-| CT-06.08 | C | Token expirado **e** de sessão revogada. | — | **Bloqueado:** qual código prevalece (QT-04) |
+| CT-06.08 | C | Token expirado **e** de sessão revogada. | 401 `token_expirado` (Aula 07, §9; antes QT-04) | Pronto |
 
 ### RN-07 — Renovação com rotação e tolerância · `docs/arquitetura.md:619`; ADR-004 · C
 | Caso | Tipo | Cenário | Resultado esperado | Situação |
@@ -416,7 +416,7 @@ Nenhum caso de regra possível. Não há nenhuma regra sobre esses dados: valida
 
 | ID | Ambiguidade | Onde | Casos afetados |
 |----|-------------|------|----------------|
-| AM-01 | **Bordas temporais:** no instante exato de `fim_vigencia`, `inicio_vigencia`, `TTL_acesso`, `T_rec` e `t_corte`, a regra vale ou não? Nenhum artefato diz se o intervalo é aberto ou fechado. | `docs/arquitetura.md:606,618,622,623` | CT-04.04, CT-06.03, CT-11.03, CT-11.05, CT-13.02 |
+| AM-01 | **(Aula 07: resolvida só para `TTL_acesso`, expira no instante exato; §9)** **Bordas temporais:** no instante exato de `fim_vigencia`, `inicio_vigencia`, `TTL_acesso`, `T_rec` e `t_corte`, a regra vale ou não? Nenhum artefato diz se o intervalo é aberto ou fechado. | `docs/arquitetura.md:606,618,622,623` | CT-04.04, CT-06.03, CT-11.03, CT-11.05, CT-13.02 |
 | AM-02 | "Taxa de quarentena **acima** do limite": igual ao limite reprova? | `docs/arquitetura.md:799` | CT-S07.03 |
 | AM-03 | Os códigos de erro de **login inválido**, cadastro inválido e "anônimo em dados de conta" não estão na matriz. Ela diz só "401", sem código. | `docs/arquitetura.md:607`; ADR-014 | CT-01.02, CT-02.03, CT-05.03, CT-17.02 |
 | AM-04 | "Assinante" (`README.md:12`): é só premium vigente, ou também free? O glossário marca como "definição pendente". | `docs/arquitetura.md` §A14 | RN-16 |
@@ -451,7 +451,7 @@ Todas são para o professor ou PO, salvo indicação.
 | QT-01 | O e-mail é único entre as contas? | CT-01.03 |
 | QT-02 | Emitir um novo código de recuperação invalida o anterior? | CT-04.07 |
 | QT-03 | Novo login no mesmo dispositivo substitui a sessão existente ou cria outra? | CT-05.04 |
-| QT-04 | Token expirado **e** revogado: qual código prevalece? | CT-06.08 |
+| QT-04 | Token expirado **e** revogado: qual código prevalece? **(Aula 07: `token_expirado`, pela ordem da tabela E2; interpretação registrada em §9)** | CT-06.08 |
 | QT-05 | O que o logout responde com token já inválido? | CT-09.04 |
 | QT-06 | Todo cadastro começa no plano free? | CT-10.01 |
 | QT-07 | Um usuário pode ter mais de uma assinatura vigente? | CT-10.03, CT-12.03 |
@@ -776,7 +776,7 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | ServicoDeConteudo: matéria inexistente | `NoSuchElementException` | Sem regra (404 × 403, ver QT-13) |
 | ServicoDeIdentidade: cadastro | Só e-mail e senha; não impede e-mail repetido | LG-01, QT-01 |
 | ServicoDeIdentidade: código de recuperação | Válido até `emitidoEm + validade`, inclusive o instante exato | AM-01, L-05 |
-| ServicoDeSessao: bordas de TTL e tolerância | O instante exato ainda vale | AM-01 |
+| ServicoDeSessao: bordas de TTL e tolerância | ~~O instante exato ainda vale~~ **(Aula 07)** Token de acesso: expira no instante exato (decidido, §9). Refresh e tolerância de reuso: o instante exato ainda vale (provisório) | AM-01 |
 | ServicoDeSessao: logout com token inválido | `token_invalido` | QT-05 |
 | ServicoDeSessao: expiração do refresh | Renovada a cada rotação (janela deslizante) | Q-04 |
 | ServicoDeSessao: chave HMAC | Gerada por instância. **Em produção deve vir de configuração secreta**, senão um reinício invalida as sessões. | Infraestrutura (L-11) |
@@ -823,13 +823,15 @@ Nenhum teste fixa estas escolhas. Elas existem porque o código precisa de *algu
 | RN-05 | CT-05.06 | `IdentidadeTest#rn05_ct05_06_credencialAusente` (parametrizado: e-mail nulo, senha nula) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** |  |
 | RN-06 | CT-06.01 | `SessaoTest#rn06_ct06_01_tokenValidoIdentificaUsuario` | Condicional | **VERDE** |  |
 | RN-06 | CT-06.02 | `SessaoTest#rn06_ct06_02_aceitoAntesDoTtl` | Bloqueado: `TTL_acesso` (Q-04) | **VERDE** |  |
-| RN-06 | CT-06.03 | `SessaoTest#rn06_ct06_03_bordaDoTtl` | Bloqueado | **DESABILITADO** | Bloqueado: AM-01, no instante exato do TTL o token expira? |
+| RN-06 | CT-06.03 | `SessaoTest#rn06_ct06_03_bordaDoTtl` | Desbloqueado (Aula 07, §9) | **VERDE** | no instante exato do TTL → `token_expirado`; com CT-06.02 e CT-06.04 completa a trinca −1 ms / 0 / +1 ms |
 | RN-06 | CT-06.04 | `SessaoTest#rn06_ct06_04_expiradoAposTtl` | Bloqueado: `TTL_acesso` | **VERDE** |  |
 | RN-06 | CT-06.05 | `SessaoTest#rn06_ct06_05_tokenMalformado` | Condicional | **VERDE** |  |
 | RN-06 | CT-06.06 | `SessaoTest#rn06_ct06_06_tokenInexistente` | Condicional | **VERDE** |  |
-| RN-06 | CT-06.07 | `SessaoTest#rn06_ct06_07_tokenDeSessaoRevogada` | Condicional | **VERDE** |  |
-| RN-06 | CT-06.08 | `SessaoTest#rn06_ct06_08_expiradoERevogado` | Bloqueado: qual código prevalece (QT-04) | **DESABILITADO** | Bloqueado: QT-04, expirado e revogado ao mesmo tempo: qual código prevalece? |
-| RN-06 | CT-06.09 | `SessaoTest#rn06_ct06_09_tokenAusenteOuIlegivel` (parametrizado: nulo, vazio, HMAC vazio, id ilegível, versão não numérica) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | token ausente sai como `token_invalido` (RN-06). A Aula 07 cita `TOKEN_AUSENTE`: divergência registrada em §8.5 |
+| RN-06 | CT-06.07 | `SessaoTest#rn06_ct06_07_tokenDeSessaoRevogada` | Condicional | **VERDE** | **(Aula 07)** resultado esperado mudou de `token_invalido` para `token_revogado` (§9) |
+| RN-06 | CT-06.08 | `SessaoTest#rn06_ct06_08_expiradoERevogado` | Desbloqueado (Aula 07, §9) | **VERDE** | `token_expirado` prevalece (ordem da tabela E2; interpretação) |
+| RN-06 | CT-06.09 | `SessaoTest#rn06_ct06_09_tokenIlegivel` (parametrizado: HMAC vazio, id ilegível, versão não numérica) | Novo (Aula 07): lacuna de risco do JaCoCo | **VERDE** | os casos nulo e vazio passaram para o CT-06.10 (§9) |
+| RN-06 | CT-06.10 | `SessaoTest#rn06_ct06_10_tokenAusente` (parametrizado: nulo, vazio, só espaços) | Novo (Aula 07, §9) | **VERDE** | `token_ausente` |
+| RN-06 | CT-06.11 | `SessaoTest#rn06_ct06_11_expiradoNegaMesmoComAssinaturaAtiva` | Novo (Aula 07, §9) | **VERDE** | a política liberaria o exclusivo; o token expirado nega antes |
 | RN-07 | CT-07.01 | `SessaoTest#rn07_ct07_01_renovacaoRotaciona` | Condicional | **VERDE** |  |
 | RN-07 | CT-07.02 | `SessaoTest#rn07_ct07_02_reusoDentroDaTolerancia` | Bloqueado: `T_tol` (EXP-10) | **VERDE** |  |
 | RN-07 | CT-07.03 | `SessaoTest#rn07_ct07_03_reusoForaDaToleranciaRevoga` | Bloqueado: `T_tol` | **VERDE** |  |
@@ -1042,7 +1044,7 @@ Leitura do `jacoco.xml` por classe, só das classes com regra de negócio. **Ris
 | **D-01** | `RegistryDeModelosJdbc.ponteiro` (produção) | Com `versao_anterior_id` NULL (logo depois da 1ª promoção), `findFirst()` sobre um elemento `null` lançava `NullPointerException`. `versaoAnterior()` quebrava em vez de devolver vazio. | O prompt proibia mudar o comportamento de produção, então a decisão foi perguntada ao usuário. Escolha: **corrigir e registrar**. A correção é de uma linha (a coluna é lida como `Optional` antes do `findFirst`) e não muda nenhuma regra. Coberta por CT-S10.04. |
 | **D-02** | `PersistenciaDoTreinoIntegracaoTest.isolarDoTesteAnterior` (teste) | O `TRUNCATE ... CASCADE` do schema `ml` (§7.3) também esvaziava `checkpoint_treino`, que referencia `execucao_treino`. `watermark()` voltava `null`, e a asserção de checkpoint do CT-S10.02 comparava `null` com `null`, sem verificar nada. | Só a preparação mudou: a linha do job é recriada em `epoch`, como o provisionamento a deixa. Asserções, resultados esperados e `@Disabled` não mudaram. O CT-S10.02 passou a verificar o checkpoint de verdade e continua verde. |
 
-### 8.5 Divergência com o material da Aula 07 (não resolvida aqui)
+### 8.5 Divergência com o material da Aula 07 (resolvida em §9)
 
 O cenário E2 da aula usa os motivos `TOKEN_AUSENTE` e `TOKEN_REVOGADO` e nega o token com **expiração ≤ agora**. A RN-06 (`docs/arquitetura.md:618`) só tem `token_expirado` e `token_invalido`, e o código aceita o token no instante exato da expiração (AM-01). Como o prompt proíbe mudar produção, os testes novos verificam a RN-06 como está. Alinhar a regra à aula exige decidir AM-01 e mudar a RN-06, e fica para a decisão do usuário.
 
@@ -1054,3 +1056,63 @@ O cenário E2 da aula usa os motivos `TOKEN_AUSENTE` e `TOKEN_REVOGADO` e nega o
 | Restaurada (suíte inteira) | `./mvnw -B clean verify` | **BUILD SUCCESS**: "All coverage checks have been met", 97,3% / 90,1% |
 
 **Cuidado observado:** sem `clean`, o `prepare-agent` **acrescenta** dados ao `target/jacoco.exec` da execução anterior. A cobertura antiga mascarou a queda, e o build passou. O CI não sofre com isso porque sempre parte de um checkout limpo. Localmente, use `clean` para medir.
+
+
+## 9. Regra E2 alinhada ao cenário de qualidade da Aula 07
+
+> **Decisão do usuário (2026-11-14):** alinhar a RN-06 ao cenário E2 do material da Aula 07. A divergência estava registrada em §8.5. **Execução:** `./mvnw -B clean verify`: **BUILD SUCCESS**, 235 execuções, 0 falhas, 34 desabilitadas (2 a menos: CT-06.03 e CT-06.08 foram desbloqueados). Cobertura: 97,1% de linhas e 89,6% de branches. O gate passou.
+
+### 9.1 A regra nova (fonte: cenário E2 da Aula 07)
+
+"Token expirado nunca libera acesso, mesmo quando a assinatura está ativa. Token ausente, inválido ou revogado também é negado. Somente token válido e não expirado permite continuar para as demais decisões de autorização."
+
+| Entrada | Decisão | Código (401) | Antes |
+|---------|---------|--------------|-------|
+| Ausente (nulo, vazio, só espaços) | Negar | `token_ausente` | `token_invalido` |
+| Assinatura inválida (malformado, sessão desconhecida, versão antiga) | Negar | `token_invalido` | igual |
+| Expiração ≤ agora | Negar | `token_expirado` | o instante exato **era aceito** (`isAfter`) |
+| Revogado | Negar | `token_revogado` | `token_invalido` |
+| Válido e vigente | Prosseguir | — | igual |
+
+**Interpretação registrada (QT-04):** a ordem das linhas da tabela foi lida como a ordem de avaliação. Por isso, um token expirado **e** revogado recebe `token_expirado` (CT-06.08). O material não diz isso explicitamente; se a intenção for outra, basta trocar a ordem das duas verificações em `ServicoDeSessao.validar` e o resultado esperado do CT-06.08.
+
+**Fora do escopo (inalterado):** a renovação por refresh continua devolvendo `token_invalido` para sessão revogada (RN-07). O instante exato da expiração do **refresh** e da tolerância de reuso ainda vale (AM-01 continua aberta para eles, para a vigência, o código de recuperação e `t_corte`). O logout com token de sessão já revogada agora devolve `token_revogado`, mas continua provisório (QT-05, CT-09.04 desabilitado).
+
+### 9.2 Mudanças
+
+| Onde | O quê |
+|------|-------|
+| `erro/CodigoDeErro` | `TOKEN_AUSENTE` e `TOKEN_REVOGADO` |
+| `erro/TratadorDeErros` | os dois novos → 401 |
+| `sessao/ServicoDeSessao.validar` | ordem ausente → inválido → expirado (`!agora.isBefore(expiraEm)`) → revogado |
+| `docs/arquitetura.md` | §4.2 (linha "Requisição") e ADR-014 |
+| §2, §3, AM-01, QT-04, §7.4, §7.5 | atualizados neste plano |
+
+### 9.3 Testes cujo resultado esperado mudou (com autorização do usuário)
+
+Todas as mudanças trocam `token_invalido` por um código **mais específico**, no mesmo ponto da asserção. Nenhuma asserção foi removida ou afrouxada.
+
+| Teste | Situação | Antes → depois |
+|-------|----------|----------------|
+| `SessaoTest#rn06_ct06_07_tokenDeSessaoRevogada` | validar token de sessão revogada | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn07_ct07_03_reusoForaDaToleranciaRevoga` | validar o token da sessão revogada pelo reuso | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn07_ct07_04_reusoDeOutroDispositivoRevoga` | idem | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn07_ct07_05_refreshMaisAntigoRevoga` | idem | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn09_ct09_01_logoutInvalidaTokenNaHora` | validar depois do logout | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn09_ct09_05_sessaoRevogadaNaoRessuscita` | idem | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn09_ct09_06_logoutConcorrenteComRenovacao` | validar o par renovado na corrida (a asserção da **renovação** continua `TOKEN_INVALIDO`) | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn09_ct09_07_logoutConcorrenteComRevogacao` | validar depois da revogação | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `IdentidadeTest#rn04_ct04_01_recuperaERevogaSessoes` | validar token antigo depois da recuperação | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `IdentidadeTest#rn04_ct04_08_recuperacaoRevogaSoDoTitular` | idem | `TOKEN_INVALIDO` → `TOKEN_REVOGADO` |
+| `SessaoTest#rn06_ct06_09_*` | os valores nulo e vazio saíram deste teste e foram para o CT-06.10, com `TOKEN_AUSENTE` | método renomeado para `rn06_ct06_09_tokenIlegivel` |
+
+**Testes novos ou desbloqueados:**
+- **CT-06.03:** borda exata do TTL → `token_expirado`. Com CT-06.02 (−1 ms) e CT-06.04 (+1 ms), completa a trinca.
+- **CT-06.08:** expirado e revogado → `token_expirado`.
+- **CT-06.10:** ausente, com `@NullAndEmptySource` e espaços.
+- **CT-06.11:** token expirado nega mesmo com premium vigente. O teste prova que a política liberaria o exclusivo, então a negação vem da expiração.
+- **CT-21.01:** passa a cobrir os dois códigos novos (401).
+
+**Cobertura:** em `ServicoDeSessao` ficaram 2 linhas sem cobertura:
+- o logout com token de sessão já revogada, bloqueado por QT-05 (CT-09.04);
+- o teste de nulo em `ler()`, que ficou defensivo, porque o token ausente agora é tratado antes.

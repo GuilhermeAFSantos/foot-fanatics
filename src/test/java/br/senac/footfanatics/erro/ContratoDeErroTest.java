@@ -29,6 +29,8 @@ class ContratoDeErroTest {
                 Arguments.of(CodigoDeErro.AUTENTICACAO_NECESSARIA, 401),
                 Arguments.of(CodigoDeErro.TOKEN_EXPIRADO, 401),
                 Arguments.of(CodigoDeErro.TOKEN_INVALIDO, 401),
+                Arguments.of(CodigoDeErro.TOKEN_AUSENTE, 401),   // Aula 07, cenário E2
+                Arguments.of(CodigoDeErro.TOKEN_REVOGADO, 401),  // Aula 07, cenário E2
                 Arguments.of(CodigoDeErro.PLANO_INSUFICIENTE, 403),
                 Arguments.of(CodigoDeErro.ACESSO_NEGADO, 403));
     }
